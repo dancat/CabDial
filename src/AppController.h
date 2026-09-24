@@ -28,6 +28,7 @@ public:
         ThrottleUI::DirectionCallback toggleDirection = nullptr;
         ThrottleUI::StopCallback stop = nullptr;
         ThrottleUI::EmergencyStopCallback emergencyStop = nullptr;
+        ThrottleUI::SpeedPresetCallback speedPreset = nullptr;
         ThrottleUI::FunctionPageCallback functionPage = nullptr;
         LocomotiveSelectionUI::SelectCallback rosterSelected = nullptr;
         LocomotiveSelectionUI::BackCallback closeSelection = nullptr;
@@ -45,6 +46,7 @@ public:
         PowerUI::BackCallback closePower = nullptr;
         SettingsUI::BrightnessCallback brightness = nullptr;
         SettingsUI::SleepCallback sleep = nullptr;
+        SettingsUI::ShortcutCallback shortcut = nullptr;
         SettingsUI::BackCallback closeSettings = nullptr;
     };
 

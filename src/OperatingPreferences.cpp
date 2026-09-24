@@ -10,6 +10,9 @@ bool OperatingPreferencesStore::load(OperatingPreferences &preferences) const
     preferences.functionPage = storage.getUChar("function-page", 0);
     preferences.displayBrightness = storage.getUChar("display-bright", 100);
     preferences.displaySleepSeconds = storage.getUShort("display-sleep", 0);
+    preferences.singlePressAction = static_cast<HomeShortcutAction>(storage.getUChar("button-single", static_cast<uint8_t>(HomeShortcutAction::F0)));
+    preferences.doublePressAction = static_cast<HomeShortcutAction>(storage.getUChar("button-double", static_cast<uint8_t>(HomeShortcutAction::Stop)));
+    preferences.longPressAction = static_cast<HomeShortcutAction>(storage.getUChar("button-long", static_cast<uint8_t>(HomeShortcutAction::Direction)));
     const String ids = storage.getString("turnout-favs", "");
     storage.end();
 
@@ -45,6 +48,9 @@ bool OperatingPreferencesStore::save(const OperatingPreferences &preferences) co
         storage.putUChar("function-page", preferences.functionPage) == sizeof(uint8_t) &&
         storage.putUChar("display-bright", preferences.displayBrightness) == sizeof(uint8_t) &&
         storage.putUShort("display-sleep", preferences.displaySleepSeconds) == sizeof(uint16_t) &&
+        storage.putUChar("button-single", static_cast<uint8_t>(preferences.singlePressAction)) == sizeof(uint8_t) &&
+        storage.putUChar("button-double", static_cast<uint8_t>(preferences.doublePressAction)) == sizeof(uint8_t) &&
+        storage.putUChar("button-long", static_cast<uint8_t>(preferences.longPressAction)) == sizeof(uint8_t) &&
         storage.putString("turnout-favs", ids) == ids.length();
     storage.end();
     return saved;

@@ -4,13 +4,17 @@
 
 namespace
 {
-lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text, int x, int y,
+lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text, int width, int height, int x, int y,
     lv_event_cb_t callback, void *user)
 {
     lv_obj_t *button = lv_btn_create(parent);
-    lv_obj_set_size(button, layout.width(78), layout.height(38));
+    lv_obj_set_size(button, layout.width(width), layout.height(height));
     lv_obj_align(button, LV_ALIGN_TOP_MID, layout.x(x), layout.y(y));
     lv_obj_set_style_bg_color(button, lv_color_hex(0x263746), 0);
+    lv_obj_set_style_border_color(button, lv_color_hex(0x3C566B), 0);
+    lv_obj_set_style_border_width(button, 1, 0);
+    lv_obj_set_style_radius(button, 14, 0);
+    lv_obj_set_style_pad_all(button, 0, 0);
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, text);
     lv_obj_center(label);
@@ -46,20 +50,33 @@ void TurnoutUI::begin(SetCallback set, FavoriteCallback favorite, BackCallback b
     lv_obj_align(status, LV_ALIGN_TOP_MID, 0, layout.y(76));
 
     roller = lv_roller_create(screen);
-    lv_obj_set_width(roller, layout.width(360));
+    lv_obj_set_width(roller, layout.width(340));
     lv_obj_set_style_text_font(roller, &lv_font_montserrat_18, LV_PART_MAIN);
     lv_obj_set_style_bg_color(roller, lv_color_hex(0x101820), LV_PART_MAIN);
     lv_obj_set_style_text_color(roller, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_border_width(roller, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(roller, lv_color_hex(0x266A91), LV_PART_SELECTED);
     lv_obj_set_style_text_color(roller, lv_color_hex(0xFFFFFF), LV_PART_SELECTED);
+    lv_obj_set_style_border_width(roller, 0, LV_PART_SELECTED);
+    lv_obj_set_style_radius(roller, 14, LV_PART_SELECTED);
+    lv_obj_set_style_text_opa(roller, LV_OPA_TRANSP, LV_PART_SELECTED);
     lv_roller_set_visible_row_count(roller, 5);
     lv_obj_align(roller, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(roller, rollerEvent, LV_EVENT_VALUE_CHANGED, this);
 
-    makeButton(screen, layout, "Refresh", 0, 112, refreshEvent, this);
-    makeButton(screen, layout, "Favorite", -135, 350, favoriteEvent, this);
-    makeButton(screen, layout, "Close", -45, 350, closeEvent, this);
-    makeButton(screen, layout, "Throw", 45, 350, throwEvent, this);
-    makeButton(screen, layout, "Back", 135, 350, backEvent, this);
+    selectedLabel = lv_label_create(screen);
+    lv_obj_set_width(selectedLabel, layout.width(320));
+    lv_label_set_long_mode(selectedLabel, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_style_text_align(selectedLabel, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(selectedLabel, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(selectedLabel, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(selectedLabel, LV_ALIGN_CENTER, 0, 0);
+
+    makeButton(screen, layout, "Refresh", 112, 34, 0, 405, refreshEvent, this);
+    makeButton(screen, layout, "Favorite", 76, 42, -126, 348, favoriteEvent, this);
+    makeButton(screen, layout, "Close", 76, 42, -42, 348, closeEvent, this);
+    makeButton(screen, layout, "Throw", 76, 42, 42, 348, throwEvent, this);
+    makeButton(screen, layout, "Back", 76, 42, 126, 348, backEvent, this);
     lvgl_port_unlock();
 }
 
@@ -71,6 +88,7 @@ void TurnoutUI::show(const std::vector<TurnoutDefinition> &turnouts, bool ready)
 
     const int priorId = ids.empty() ? 0 : ids[lv_roller_get_selected(roller)];
     ids.clear();
+    optionLabels.clear();
     String options;
     uint16_t selected = 0;
     for (const TurnoutDefinition &turnout : turnouts)
@@ -90,16 +108,21 @@ void TurnoutUI::show(const std::vector<TurnoutDefinition> &turnouts, bool ready)
         if (turnout.favorite)
             options += "  [FAV]";
         ids.push_back(turnout.id);
+        optionLabels.push_back(options.substring(options.lastIndexOf('\n') + 1));
         if (turnout.id == priorId)
             selected = ids.size() - 1;
     }
 
     if (options.length() == 0)
+    {
         options = "No turnouts";
+        optionLabels.push_back(options);
+    }
     lv_label_set_text(status, !ready ? "Loading turnout list..." :
         turnouts.empty() ? "No turnouts configured" : "Select a turnout, then choose Close or Throw");
     lv_roller_set_options(roller, options.c_str(), LV_ROLLER_MODE_NORMAL);
     lv_roller_set_selected(roller, selected, LV_ANIM_OFF);
+    updateSelectedLabel();
     visible = true;
     lv_scr_load(screen);
     lvgl_port_unlock();
@@ -115,6 +138,7 @@ void TurnoutUI::move(int delta)
     if (selected >= static_cast<int>(ids.size()))
         selected = ids.size() - 1;
     lv_roller_set_selected(roller, selected, LV_ANIM_OFF);
+    updateSelectedLabel();
 }
 
 void TurnoutUI::closeSelected() { setSelected(false); }
@@ -171,4 +195,16 @@ void TurnoutUI::refreshEvent(lv_event_t *event)
         lv_label_set_text(ui->status, "Refreshing turnout list...");
         ui->refreshCallback();
     }
+}
+
+void TurnoutUI::rollerEvent(lv_event_t *event)
+{
+    static_cast<TurnoutUI *>(lv_event_get_user_data(event))->updateSelectedLabel();
+}
+
+void TurnoutUI::updateSelectedLabel()
+{
+    const uint16_t selected = lv_roller_get_selected(roller);
+    if (selected < optionLabels.size())
+        lv_label_set_text(selectedLabel, optionLabels[selected].c_str());
 }

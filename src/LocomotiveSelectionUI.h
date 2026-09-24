@@ -26,6 +26,7 @@ private:
     lv_obj_t *screen = nullptr;
     lv_obj_t *returnScreen = nullptr;
     lv_obj_t *roller = nullptr;
+    lv_obj_t *selectedLabel = nullptr;
     lv_obj_t *status = nullptr;
     lv_obj_t *listBackButton = nullptr;
     lv_obj_t *listSelectButton = nullptr;
@@ -40,6 +41,7 @@ private:
     bool manualMode = false;
     uint16_t manualAddress = 1;
     std::vector<uint16_t> addresses;
+    std::vector<String> optionLabels;
     SelectCallback selectCallback = nullptr;
     BackCallback backCallback = nullptr;
     RefreshCallback refreshCallback = nullptr;
@@ -52,4 +54,6 @@ private:
     void showManual(uint16_t address);
     void updateManualAddress();
     void changeManualAddress(int delta);
+    void updateSelectedLabel();
+    static void rollerEvent(lv_event_t *event);
 };

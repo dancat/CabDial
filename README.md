@@ -9,17 +9,30 @@ The firmware connects over Wi-Fi to the Command Station's TCP interface. No
 hard-coded Wi-Fi or Command Station address is required: connection details
 are entered on the device and stored in ESP32 Preferences.
 
+## Interface mockups
+
+<p align="center">
+  <img src="docs/screenshots/main-throttle.png" alt="CabDial main throttle screen" width="30%">
+  <img src="docs/screenshots/locomotive-selection.png" alt="CabDial locomotive selection screen" width="30%">
+  <img src="docs/screenshots/turnout-control.png" alt="CabDial turnout control screen" width="30%">
+</p>
+
+Illustrations show the intended round-screen interface. Locomotive and turnout
+names are examples.
+
 ## Features
 
 - DCC-EX Wi-Fi and TCP connection setup on the touchscreen
 - Saved Wi-Fi network, Command Station IP address, and port
 - Connection status displayed on the throttle screen
 - Speed control with the on-screen arc and rotary encoder
-- Direction, selected-locomotive stop, and global emergency stop controls
+- 50 and 75 speed presets, selected-locomotive stop, direction, and global
+  emergency-stop controls
 - Locomotive selection from the DCC-EX roster
 - Manual locomotive address entry for locomotives outside the roster
 - Roster names and function definitions, including momentary functions
-- Five visible function buttons with paging for additional roster functions
+- Three large function cards with paging for additional roster functions,
+  including text and recognised function pictograms
 - Per-locomotive function state retained while the throttle remains powered
 - Synchronization of the selected locomotive's speed, direction, and function
   broadcasts from other throttles
@@ -28,6 +41,9 @@ are entered on the device and stored in ESP32 Preferences.
 - Route list and route start actions
 - Track-power page with on/off state and confirmation before power-off
 - Display-brightness and sleep-timeout settings saved as preferences
+- Configurable single-, double-, and long-press physical-button shortcuts
+  for F0, F1, F2, stop, direction, or emergency stop
+- 180-degree display and touch rotation for the installed Viewe hardware
 - Round-screen layout designed for the Viewe display
 
 ## Hardware
@@ -74,8 +90,8 @@ Command Station address, and port. DCC-EX normally uses TCP port `2560`.
 | --- | --- |
 | Speed arc / encoder | Change selected locomotive speed |
 | `LOCO` panel | Open roster and manual-address selection |
-| Function buttons | Toggle latching functions or hold momentary functions |
-| Page arrows | Show further locomotive functions |
+| Function cards | Toggle latching functions or hold momentary functions |
+| Function chevrons | Show the previous or next group of three functions |
 | Direction control | Stop and change direction |
 | Stop | Stop the selected locomotive |
 | `!` | Send a global DCC-EX emergency stop |
@@ -85,8 +101,10 @@ Command Station address, and port. DCC-EX normally uses TCP port `2560`.
 | Network icon | Open connection settings |
 | Cog icon | Open display settings |
 
-The encoder can browse locomotive, turnout, and route lists. The physical
-button supports the existing F0 shortcut and long-press navigation behavior.
+The encoder can browse locomotive, turnout, and route lists. In a list, the
+physical button selects and closes on a single press, or returns without an
+action on a double press. On the home screen, its single-, double-, and
+long-press actions are configured under **Settings → Button Shortcuts**.
 
 ## Limitations and current scope
 
@@ -111,7 +129,7 @@ button supports the existing F0 shortcut and long-press navigation behavior.
 - `src/DccController.*` — DCC-EX protocol connection and application model
 - `src/AppController.*` — application runtime, UI behavior, and input flow
 - `src/*UI.*` — LVGL pages for throttle, locomotive selection, connection,
-  turnouts, routes, power, and display settings
+  turnouts, routes, power, display settings, and button shortcuts
 - `src/Device.*` and `src/ViewEDevice.*` — board/display abstraction and the
   current Viewe implementation
 - `docs/` — DCCEXProtocol references and hardware-porting notes

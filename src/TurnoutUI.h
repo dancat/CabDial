@@ -29,18 +29,22 @@ private:
     lv_obj_t *screen = nullptr;
     lv_obj_t *returnScreen = nullptr;
     lv_obj_t *roller = nullptr;
+    lv_obj_t *selectedLabel = nullptr;
     lv_obj_t *status = nullptr;
     bool visible = false;
     std::vector<int> ids;
+    std::vector<String> optionLabels;
     SetCallback setCallback = nullptr;
     FavoriteCallback favoriteCallback = nullptr;
     BackCallback backCallback = nullptr;
     RefreshCallback refreshCallback = nullptr;
 
     void setSelected(bool thrown);
+    void updateSelectedLabel();
     static void closeEvent(lv_event_t *event);
     static void throwEvent(lv_event_t *event);
     static void favoriteEvent(lv_event_t *event);
     static void backEvent(lv_event_t *event);
     static void refreshEvent(lv_event_t *event);
+    static void rollerEvent(lv_event_t *event);
 };

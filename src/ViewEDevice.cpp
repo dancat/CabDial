@@ -33,6 +33,22 @@ bool ViewEDevice::begin(const InputCallbacks &callbacks)
     if (!lvgl_port_init(board->getLCD(), board->getTouch()))
         return false;
 
+#if LVGL_PORT_ROTATION_DEGREE == 180
+    // ESP32_Display_Panel owns the linked LVGL port for this board. Apply the
+    // rotation after that port has registered its display driver so the LCD
+    // transformation and the touch transformation use the same orientation.
+    lv_disp_set_rotation(lv_disp_get_default(), LV_DISP_ROT_180);
+
+    // The bundled port does not apply the build-time rotation to this board's
+    // touch controller. Mirror both touch axes to match the rotated display.
+    auto *touch = board->getTouch();
+    if (touch != nullptr) {
+        auto &touchTransformation = touch->getTransformation();
+        touch->mirrorX(!touchTransformation.mirror_x);
+        touch->mirrorY(!touchTransformation.mirror_y);
+    }
+#endif
+
     profile.width = board->getLCD()->getFrameWidth();
     profile.height = board->getLCD()->getFrameHeight();
 
@@ -42,6 +58,7 @@ bool ViewEDevice::begin(const InputCallbacks &callbacks)
     knob->attachRightEventCallback(callbacks.encoderDecrease);
 
     button = new Button(viewe::BUTTON_PIN, false);
+    button->attachSingleClickEventCb(callbacks.singleClick, nullptr);
     button->attachDoubleClickEventCb(callbacks.doubleClick, nullptr);
     button->attachLongPressStartEventCb(callbacks.longPress, nullptr);
 

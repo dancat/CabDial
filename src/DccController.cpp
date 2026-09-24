@@ -366,15 +366,40 @@ Loco *DccController::firstRosterLoco()
 void DccController::refreshRoster()
 {
     if (!serverReady())
+    {
+        Serial.println("Roster refresh ignored: DCC-EX is not connected");
         return;
+    }
+
+    Serial.println("Refreshing DCC-EX roster");
     protocol.refreshRoster();
+    protocol.getLists(true, false, false, false);
+    Serial.println("Requested DCC-EX roster (<JR>)");
 }
 
 void DccController::refreshTurnouts()
 {
     if (!serverReady())
+    {
+        Serial.println("Turnout refresh ignored: DCC-EX is not connected");
         return;
+    }
+
+    Serial.println("Refreshing DCC-EX turnout list");
     protocol.refreshTurnoutList();
+    if (protocol.receivedRoster())
+    {
+        protocol.getLists(false, true, false, false);
+    }
+    else
+    {
+        // DCCEXProtocol serializes object-list loading behind the roster. A
+        // Command Station that does not answer <JR> would otherwise prevent
+        // a turnout refresh forever. Its parser still handles <jT...>
+        // responses correctly when this request is sent directly.
+        protocol.sendCommand("JT");
+    }
+    Serial.println("Requested DCC-EX turnout list (<JT>)");
 }
 
 void DccController::refreshLists()

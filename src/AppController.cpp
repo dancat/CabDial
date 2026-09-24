@@ -17,6 +17,7 @@ bool AppController::begin(const Device::InputCallbacks &inputCallbacks)
     }
     if (!capabilities.physicalButton)
     {
+        activeInputs.singleClick = nullptr;
         activeInputs.doubleClick = nullptr;
         activeInputs.longPress = nullptr;
     }
@@ -59,6 +60,7 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
     throttle.setDirectionCallback(callbacks.toggleDirection);
     throttle.setStopCallback(callbacks.stop);
     throttle.setEmergencyStopCallback(callbacks.emergencyStop);
+    throttle.setSpeedPresetCallback(callbacks.speedPreset);
     throttle.setFunctionPageCallback(callbacks.functionPage);
     selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster);
     connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists);
@@ -66,7 +68,7 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
                   callbacks.refreshTurnouts);
     routes.begin(callbacks.routeStart, callbacks.closeRoutes);
     power.begin(callbacks.setPower, callbacks.closePower);
-    settings.begin(callbacks.brightness, callbacks.sleep, callbacks.closeSettings);
+    settings.begin(callbacks.brightness, callbacks.sleep, callbacks.closeSettings, callbacks.shortcut);
 }
 
 // Application runtime: DCC state, callbacks, and synchronization.
@@ -193,7 +195,19 @@ void openDisplaySettings()
 {
     noteDisplayActivity();
     settingsUI.show(operatingPreferences.displayBrightness,
-        operatingPreferences.displaySleepSeconds);
+        operatingPreferences.displaySleepSeconds, operatingPreferences.singlePressAction,
+        operatingPreferences.doublePressAction, operatingPreferences.longPressAction);
+}
+
+void setHomeShortcut(uint8_t press, HomeShortcutAction action)
+{
+    if (press == 0)
+        operatingPreferences.singlePressAction = action;
+    else if (press == 1)
+        operatingPreferences.doublePressAction = action;
+    else if (press == 2)
+        operatingPreferences.longPressAction = action;
+    operatingPreferencesStore.save(operatingPreferences);
 }
 
 void closeConnectionSettings()
@@ -322,6 +336,14 @@ void emergencyStop()
     noteDisplayActivity();
     dcc.emergencyStop();
     locomotive.speed = 0;
+    throttleUI.update(locomotive, mode == MODE_SPEED);
+}
+
+void setSpeedPreset(uint8_t speed)
+{
+    noteDisplayActivity();
+    locomotive.speed = speed > 126 ? 126 : speed;
+    dcc.setSpeed(locomotive.address, locomotive.speed, locomotive.directionForward);
     throttleUI.update(locomotive, mode == MODE_SPEED);
 }
 
@@ -617,10 +639,28 @@ void onKnobRightEventCallback(
 
 
 // -------------------------------------------------
-// Button - double click
+// Button - single click
 // -------------------------------------------------
 
-static void DoubleClickCb(
+static void runHomeShortcut(HomeShortcutAction action)
+{
+    if (action == HomeShortcutAction::Stop) { stopSelectedLoco(); return; }
+    if (action == HomeShortcutAction::Direction) { toggleDirection(); return; }
+    if (action == HomeShortcutAction::EmergencyStop) { emergencyStop(); return; }
+    const uint8_t function = static_cast<uint8_t>(action);
+    const bool momentary = locomotive.fromRoster && locomotive.functionDefinitions[function].momentary;
+    if (momentary) {
+        dcc.setFunction(locomotive.address, function, true);
+        dcc.setFunction(locomotive.address, function, false);
+        locomotive.functionStates[function] = false;
+    } else {
+        locomotive.functionStates[function] = !locomotive.functionStates[function];
+        dcc.setFunction(locomotive.address, function, locomotive.functionStates[function]);
+    }
+    throttleUI.update(locomotive, mode == MODE_SPEED);
+}
+
+static void SingleClickCb(
     void *button_handle,
     void *usr_data
 )
@@ -634,16 +674,21 @@ static void DoubleClickCb(
     }
     if (selectionUI.isVisible())
     {
+        selectionUI.select();
         lvgl_port_unlock();
         return;
     }
     if (turnoutUI.isVisible())
     {
+        turnoutUI.closeSelected();
+        closeTurnoutPage();
         lvgl_port_unlock();
         return;
     }
     if (routeUI.isVisible())
     {
+        routeUI.startSelected();
+        closeRoutePage();
         lvgl_port_unlock();
         return;
     }
@@ -657,21 +702,27 @@ static void DoubleClickCb(
         lvgl_port_unlock();
         return;
     }
-    if (locomotive.fromRoster && locomotive.functionDefinitions[0].momentary)
-    {
-        // The physical button has no matching release event for a double click.
-        // Send a short protocol pulse instead of leaving a momentary function on.
-        dcc.setFunction(locomotive.address, 0, true);
-        dcc.setFunction(locomotive.address, 0, false);
-        locomotive.functionStates[0] = false;
-    }
-    else
-    {
-        locomotive.functionStates[0] = !locomotive.functionStates[0];
-        dcc.setFunction(locomotive.address, 0, locomotive.functionStates[0]);
-    }
+    runHomeShortcut(operatingPreferences.singlePressAction);
+    lvgl_port_unlock();
+}
 
-    throttleUI.update(locomotive, mode == MODE_SPEED);
+
+// -------------------------------------------------
+// Button - double click
+// -------------------------------------------------
+
+static void DoubleClickCb(void *button_handle, void *usr_data)
+{
+    lvgl_port_lock(-1);
+    noteDisplayActivity();
+    if (selectionUI.isVisible())
+        closeLocomotiveSelection();
+    else if (turnoutUI.isVisible())
+        closeTurnoutPage();
+    else if (routeUI.isVisible())
+        closeRoutePage();
+    else if (!connectionUI.isVisible() && !powerUI.isVisible() && !settingsUI.isVisible())
+        runHomeShortcut(operatingPreferences.doublePressAction);
     lvgl_port_unlock();
 }
 
@@ -701,19 +752,16 @@ static void LongPressStartCb(
     }
     if (selectionUI.isVisible())
     {
-        closeLocomotiveSelection();
         lvgl_port_unlock();
         return;
     }
     if (turnoutUI.isVisible())
     {
-        closeTurnoutPage();
         lvgl_port_unlock();
         return;
     }
     if (routeUI.isVisible())
     {
-        closeRoutePage();
         lvgl_port_unlock();
         return;
     }
@@ -723,7 +771,7 @@ static void LongPressStartCb(
         lvgl_port_unlock();
         return;
     }
-    toggleDirection();
+    runHomeShortcut(operatingPreferences.longPressAction);
     lvgl_port_unlock();
 
     Serial.printf(
@@ -782,6 +830,7 @@ void initializeApplication()
     const Device::InputCallbacks inputCallbacks {
         onKnobLeftEventCallback,
         onKnobRightEventCallback,
+        SingleClickCb,
         DoubleClickCb,
         LongPressStartCb
     };
@@ -804,6 +853,7 @@ void initializeApplication()
         toggleDirection,
         stopSelectedLoco,
         emergencyStop,
+        setSpeedPreset,
         saveFunctionPage,
         selectRosterLocomotive,
         closeLocomotiveSelection,
@@ -821,6 +871,7 @@ void initializeApplication()
         closePowerPage,
         setDisplayBrightness,
         setDisplaySleepTimeout,
+        setHomeShortcut,
         closeDisplaySettings
     };
     app.initializeUi(uiCallbacks);

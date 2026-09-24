@@ -9,8 +9,9 @@ must not depend on a board SDK, GPIO number, display driver, or input library.
 Implement `Device` for a new board and select it in `DeviceFactory.cpp` using a
 new `DEVICE_*` build flag. Its `begin()` method must initialise the display,
 touch input, LVGL port, and any available physical inputs. It receives the
-application callbacks for encoder decrease/increase, double click, and long
-press. An unavailable input is represented by the corresponding capability.
+application callbacks for encoder decrease/increase, single click, double
+click, and long press. An unavailable input is represented by the
+corresponding capability.
 
 `setBacklight()` must be harmless when the board has no adjustable backlight.
 

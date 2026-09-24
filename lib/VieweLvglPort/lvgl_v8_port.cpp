@@ -471,13 +471,37 @@ IRAM_ATTR bool onLcdVsyncCallback(void *user_data)
 
 #else
 
+#if LVGL_PORT_ROTATION_DEGREE == 180
+static void rotate_buffer_180(lv_color_t *pixels, size_t pixel_count)
+{
+    // LVGL's normal RGB flush path sends a small rectangular draw buffer.
+    // Reversing its pixels and its destination origin produces a 180 degree
+    // rotation without relying on the panel's ineffective mirror controls.
+    for (size_t first = 0, last = pixel_count - 1; first < last; ++first, --last) {
+        const lv_color_t pixel = pixels[first];
+        pixels[first] = pixels[last];
+        pixels[last] = pixel;
+    }
+}
+#endif
+
 void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
 {
     LCD *lcd = (LCD *)drv->user_data;
-    const int offsetx1 = area->x1;
-    const int offsetx2 = area->x2;
-    const int offsety1 = area->y1;
-    const int offsety2 = area->y2;
+    int offsetx1 = area->x1;
+    int offsetx2 = area->x2;
+    int offsety1 = area->y1;
+    int offsety2 = area->y2;
+
+#if LVGL_PORT_ROTATION_DEGREE == 180
+    const int width = offsetx2 - offsetx1 + 1;
+    const int height = offsety2 - offsety1 + 1;
+    rotate_buffer_180(color_map, (size_t)width * height);
+    offsetx1 = lcd->getFrameWidth() - 1 - area->x2;
+    offsetx2 = offsetx1 + width - 1;
+    offsety1 = lcd->getFrameHeight() - 1 - area->y2;
+    offsety2 = offsety1 + height - 1;
+#endif
 
     lcd->drawBitmap(offsetx1, offsety1, offsetx2 - offsetx1 + 1, offsety2 - offsety1 + 1, (const uint8_t *)color_map);
     // For RGB LCD, directly notify LVGL that the buffer is ready
@@ -619,6 +643,11 @@ static lv_disp_t *display_init(LCD *lcd)
     disp_drv.direct_mode = 1;
 #endif
 #else                       // Only available when the tearing effect is disabled
+#if LVGL_PORT_ROTATION_DEGREE != 0
+    // Rotation is performed in flush_callback for this RGB panel.
+    // Do not enable LVGL software rotation as it would rotate the submitted
+    // buffer a second time.
+#else
     if (lcd->getBasicAttributes().basic_bus_spec.isFunctionValid(LCD::BasicBusSpecification::FUNC_SWAP_XY) &&
             lcd->getBasicAttributes().basic_bus_spec.isFunctionValid(LCD::BasicBusSpecification::FUNC_MIRROR_X) &&
             lcd->getBasicAttributes().basic_bus_spec.isFunctionValid(LCD::BasicBusSpecification::FUNC_MIRROR_Y)) {
@@ -626,6 +655,7 @@ static lv_disp_t *display_init(LCD *lcd)
     } else {
         disp_drv.sw_rotate = 1;
     }
+#endif
 #endif /* LVGL_PORT_AVOID_TEAR */
     disp_drv.draw_buf = &disp_buf;
     disp_drv.user_data = (void *)lcd;
@@ -795,7 +825,8 @@ bool lvgl_port_init(LCD *lcd, Touch *tp)
     ESP_UTILS_LOGI("Initializing LVGL display driver");
     disp = display_init(lcd);
     ESP_UTILS_CHECK_NULL_RETURN(disp, false, "Initialize LVGL display driver failed");
-    // Record the initial rotation of the display
+    // The ViewE RGB panel is rotated in flush_callback. Keep LVGL's logical
+    // coordinate system unchanged so each dirty rectangle can be mirrored.
     lv_disp_set_rotation(disp, LV_DISP_ROT_NONE);
 
     // For non-RGB LCD, need to notify LVGL that the buffer is ready when the refresh is finished

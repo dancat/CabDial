@@ -34,6 +34,8 @@ public:
     void setStopCallback(StopCallback callback) { stopCallback = callback; }
     using EmergencyStopCallback = void (*)();
     void setEmergencyStopCallback(EmergencyStopCallback callback) { emergencyStopCallback = callback; }
+    using SpeedPresetCallback = void (*)(uint8_t speed);
+    void setSpeedPresetCallback(SpeedPresetCallback callback) { speedPresetCallback = callback; }
     using FunctionPageCallback = void (*)(uint8_t page);
     void setFunctionPageCallback(FunctionPageCallback callback) { functionPageCallback = callback; }
     void setFunctionPage(uint8_t page);
@@ -51,6 +53,8 @@ private:
     lv_obj_t *speedArc = nullptr;
     lv_obj_t *stopButton = nullptr;
     lv_obj_t *emergencyStopButton = nullptr;
+    lv_obj_t *speedPreset50Button = nullptr;
+    lv_obj_t *speedPreset75Button = nullptr;
 
     // Locomotive
     lv_obj_t *addressTitleLabel = nullptr;
@@ -58,6 +62,7 @@ private:
     lv_obj_t *nameLabel = nullptr;
     lv_obj_t *connectionButton = nullptr;
     lv_obj_t *connectionLabel = nullptr;
+    lv_obj_t *connectionIndicator = nullptr;
     lv_obj_t *settingsButton = nullptr;
     lv_obj_t *turnoutButton = nullptr;
     lv_obj_t *powerButton = nullptr;
@@ -69,10 +74,12 @@ private:
     lv_obj_t *directionButton = nullptr;
 
     // Function controls
-    static constexpr uint8_t FUNCTION_SLOT_COUNT = 5;
+    static constexpr uint8_t FUNCTION_SLOT_COUNT = 3;
+    static constexpr uint8_t MANUAL_FUNCTION_COUNT = 5;
     struct FunctionSlot
     {
         lv_obj_t *button = nullptr;
+        lv_obj_t *icon = nullptr;
         lv_obj_t *label = nullptr;
         uint8_t function = 0;
         bool assigned = false;
@@ -101,9 +108,11 @@ private:
     DirectionCallback directionCallback = nullptr;
     StopCallback stopCallback = nullptr;
     EmergencyStopCallback emergencyStopCallback = nullptr;
+    SpeedPresetCallback speedPresetCallback = nullptr;
     FunctionPageCallback functionPageCallback = nullptr;
 
     static void functionButtonEvent(lv_event_t *event);
+    static void functionGestureEvent(lv_event_t *event);
     static void previousPageEvent(lv_event_t *event);
     static void nextPageEvent(lv_event_t *event);
     static void selectionButtonEvent(lv_event_t *event);
@@ -115,6 +124,7 @@ private:
     static void directionButtonEvent(lv_event_t *event);
     static void stopButtonEvent(lv_event_t *event);
     static void emergencyStopButtonEvent(lv_event_t *event);
+    static void speedPresetButtonEvent(lv_event_t *event);
     void updateFunctionSlots(const Locomotive &locomotive);
     void updateFunctionAppearance(const Locomotive &locomotive);
 };

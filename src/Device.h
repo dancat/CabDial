@@ -29,6 +29,7 @@ public:
     {
         EncoderCallback encoderDecrease = nullptr;
         EncoderCallback encoderIncrease = nullptr;
+        ButtonCallback singleClick = nullptr;
         ButtonCallback doubleClick = nullptr;
         ButtonCallback longPress = nullptr;
     };
