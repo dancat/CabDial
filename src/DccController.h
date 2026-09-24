@@ -45,6 +45,7 @@ public:
 
     Loco *firstRosterLoco();
     void refreshRoster();
+    void refreshTurnouts();
     void refreshLists();
     void requestRoster();
     bool copyRoster(std::vector<Locomotive> &entries);

@@ -11,8 +11,10 @@ public:
     using SetCallback = void (*)(int id, bool thrown);
     using FavoriteCallback = void (*)(int id);
     using BackCallback = void (*)();
+    using RefreshCallback = void (*)();
 
-    void begin(SetCallback set, FavoriteCallback favorite, BackCallback back);
+    void begin(SetCallback set, FavoriteCallback favorite, BackCallback back,
+               RefreshCallback refresh);
     void setDisplayProfile(const DisplayProfile &value) { profile = value; }
     void show(const std::vector<TurnoutDefinition> &turnouts, bool ready);
     void move(int delta);
@@ -33,10 +35,12 @@ private:
     SetCallback setCallback = nullptr;
     FavoriteCallback favoriteCallback = nullptr;
     BackCallback backCallback = nullptr;
+    RefreshCallback refreshCallback = nullptr;
 
     void setSelected(bool thrown);
     static void closeEvent(lv_event_t *event);
     static void throwEvent(lv_event_t *event);
     static void favoriteEvent(lv_event_t *event);
     static void backEvent(lv_event_t *event);
+    static void refreshEvent(lv_event_t *event);
 };

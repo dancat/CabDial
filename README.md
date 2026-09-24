@@ -124,9 +124,9 @@ See `platformio.ini` for exact sources.
 
 ## License
 
-No license has been selected for CabDial itself yet. Add a `LICENSE` file
-before publishing if you want to grant others permission to use, modify, or
-redistribute the project.
+CabDial's original source code is licensed under the [MIT License](LICENSE).
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the licenses and
+attributions that apply to its dependencies and derived source files.
 
 ### Third-party dependencies
 

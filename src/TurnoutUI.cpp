@@ -4,12 +4,12 @@
 
 namespace
 {
-lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text, int x,
+lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text, int x, int y,
     lv_event_cb_t callback, void *user)
 {
     lv_obj_t *button = lv_btn_create(parent);
     lv_obj_set_size(button, layout.width(78), layout.height(38));
-    lv_obj_align(button, LV_ALIGN_TOP_MID, layout.x(x), layout.y(350));
+    lv_obj_align(button, LV_ALIGN_TOP_MID, layout.x(x), layout.y(y));
     lv_obj_set_style_bg_color(button, lv_color_hex(0x263746), 0);
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, text);
@@ -19,12 +19,14 @@ lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text,
 }
 }
 
-void TurnoutUI::begin(SetCallback set, FavoriteCallback favorite, BackCallback back)
+void TurnoutUI::begin(SetCallback set, FavoriteCallback favorite, BackCallback back,
+                      RefreshCallback refresh)
 {
     lvgl_port_lock(-1);
     setCallback = set;
     favoriteCallback = favorite;
     backCallback = back;
+    refreshCallback = refresh;
     const UiLayout layout(profile);
     screen = lv_obj_create(nullptr);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
@@ -53,10 +55,11 @@ void TurnoutUI::begin(SetCallback set, FavoriteCallback favorite, BackCallback b
     lv_roller_set_visible_row_count(roller, 5);
     lv_obj_align(roller, LV_ALIGN_CENTER, 0, 0);
 
-    makeButton(screen, layout, "Favorite", -135, favoriteEvent, this);
-    makeButton(screen, layout, "Close", -45, closeEvent, this);
-    makeButton(screen, layout, "Throw", 45, throwEvent, this);
-    makeButton(screen, layout, "Back", 135, backEvent, this);
+    makeButton(screen, layout, "Refresh", 0, 112, refreshEvent, this);
+    makeButton(screen, layout, "Favorite", -135, 350, favoriteEvent, this);
+    makeButton(screen, layout, "Close", -45, 350, closeEvent, this);
+    makeButton(screen, layout, "Throw", 45, 350, throwEvent, this);
+    makeButton(screen, layout, "Back", 135, 350, backEvent, this);
     lvgl_port_unlock();
 }
 
@@ -158,4 +161,14 @@ void TurnoutUI::backEvent(lv_event_t *event)
     auto *ui = static_cast<TurnoutUI *>(lv_event_get_user_data(event));
     if (ui->backCallback)
         ui->backCallback();
+}
+
+void TurnoutUI::refreshEvent(lv_event_t *event)
+{
+    auto *ui = static_cast<TurnoutUI *>(lv_event_get_user_data(event));
+    if (ui->refreshCallback)
+    {
+        lv_label_set_text(ui->status, "Refreshing turnout list...");
+        ui->refreshCallback();
+    }
 }

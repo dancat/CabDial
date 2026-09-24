@@ -19,11 +19,13 @@ lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text,
 }
 }
 
-void LocomotiveSelectionUI::begin(SelectCallback select, BackCallback back)
+void LocomotiveSelectionUI::begin(SelectCallback select, BackCallback back,
+                                  RefreshCallback refresh)
 {
     lvgl_port_lock(-1);
     selectCallback = select;
     backCallback = back;
+    refreshCallback = refresh;
     const UiLayout layout(profile);
     screen = lv_obj_create(nullptr);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
@@ -52,6 +54,7 @@ void LocomotiveSelectionUI::begin(SelectCallback select, BackCallback back)
 
     listBackButton = makeButton(screen, layout, "Back", -55, 350, backEvent, this);
     listSelectButton = makeButton(screen, layout, "Select", 55, 350, selectEvent, this);
+    refreshButton = makeButton(screen, layout, "Refresh", 0, 302, refreshEvent, this);
 
     manualTitle = lv_label_create(screen);
     lv_label_set_text(manualTitle, "MANUAL ADDRESS");
@@ -82,6 +85,7 @@ void LocomotiveSelectionUI::show(const std::vector<Locomotive> &roster,
     lv_obj_clear_flag(status, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(listBackButton, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(listSelectButton, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(refreshButton, LV_OBJ_FLAG_HIDDEN);
     for (lv_obj_t *object : {manualTitle, manualAddressLabel, manualDecreaseButton,
                              manualIncreaseButton, manualBackButton, manualSelectButton})
         lv_obj_add_flag(object, LV_OBJ_FLAG_HIDDEN);
@@ -179,6 +183,16 @@ void LocomotiveSelectionUI::backEvent(lv_event_t *event)
         ui->backCallback();
 }
 
+void LocomotiveSelectionUI::refreshEvent(lv_event_t *event)
+{
+    auto *ui = static_cast<LocomotiveSelectionUI *>(lv_event_get_user_data(event));
+    if (!ui->manualMode && ui->refreshCallback)
+    {
+        lv_label_set_text(ui->status, "Refreshing roster...");
+        ui->refreshCallback();
+    }
+}
+
 void LocomotiveSelectionUI::showManual(uint16_t address)
 {
     manualMode = true;
@@ -187,6 +201,7 @@ void LocomotiveSelectionUI::showManual(uint16_t address)
     lv_obj_add_flag(status, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(listBackButton, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(listSelectButton, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(refreshButton, LV_OBJ_FLAG_HIDDEN);
     for (lv_obj_t *object : {manualTitle, manualAddressLabel, manualDecreaseButton,
                              manualIncreaseButton, manualBackButton, manualSelectButton})
         lv_obj_clear_flag(object, LV_OBJ_FLAG_HIDDEN);

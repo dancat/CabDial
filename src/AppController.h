@@ -31,12 +31,14 @@ public:
         ThrottleUI::FunctionPageCallback functionPage = nullptr;
         LocomotiveSelectionUI::SelectCallback rosterSelected = nullptr;
         LocomotiveSelectionUI::BackCallback closeSelection = nullptr;
+        LocomotiveSelectionUI::RefreshCallback refreshRoster = nullptr;
         ConnectionUI::SaveCallback saveConnection = nullptr;
         ConnectionUI::BackCallback closeConnection = nullptr;
         ConnectionUI::RefreshCallback refreshLists = nullptr;
         TurnoutUI::SetCallback turnoutSet = nullptr;
         TurnoutUI::FavoriteCallback turnoutFavorite = nullptr;
         TurnoutUI::BackCallback closeTurnouts = nullptr;
+        TurnoutUI::RefreshCallback refreshTurnouts = nullptr;
         RouteUI::StartCallback routeStart = nullptr;
         RouteUI::BackCallback closeRoutes = nullptr;
         PowerUI::PowerCallback setPower = nullptr;

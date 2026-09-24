@@ -659,15 +659,26 @@ static void touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
     Touch *tp = (Touch *)indev_drv->user_data;
     TouchPoint point;
+    static lv_point_t last_valid_point = {0, 0};
 
     int read_touch_result = tp->readPoints(&point, 1, 0);
+    lv_disp_t *display = lv_disp_get_default();
+    const lv_coord_t width = lv_disp_get_hor_res(display);
+    const lv_coord_t height = lv_disp_get_ver_res(display);
+
+    // A release from the MD80ET controller can contain its raw sentinel
+    // coordinates (2049, 1280). Always provide LVGL with a valid coordinate,
+    // including on release, so those raw values cannot be interpreted as a
+    // pointer position.
+    data->point = last_valid_point;
 
     if (read_touch_result > 0 &&
-        point.x < LV_HOR_RES &&
-        point.y < LV_VER_RES)
+        point.x < width &&
+        point.y < height)
     {
-        data->point.x = point.x;
-        data->point.y = point.y;
+        last_valid_point.x = point.x;
+        last_valid_point.y = point.y;
+        data->point = last_valid_point;
         data->state = LV_INDEV_STATE_PRESSED;
     }
     else

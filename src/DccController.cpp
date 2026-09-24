@@ -365,7 +365,16 @@ Loco *DccController::firstRosterLoco()
 
 void DccController::refreshRoster()
 {
+    if (!serverReady())
+        return;
     protocol.refreshRoster();
+}
+
+void DccController::refreshTurnouts()
+{
+    if (!serverReady())
+        return;
+    protocol.refreshTurnoutList();
 }
 
 void DccController::refreshLists()

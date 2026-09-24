@@ -60,9 +60,10 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
     throttle.setStopCallback(callbacks.stop);
     throttle.setEmergencyStopCallback(callbacks.emergencyStop);
     throttle.setFunctionPageCallback(callbacks.functionPage);
-    selection.begin(callbacks.rosterSelected, callbacks.closeSelection);
+    selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster);
     connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists);
-    turnouts.begin(callbacks.turnoutSet, callbacks.turnoutFavorite, callbacks.closeTurnouts);
+    turnouts.begin(callbacks.turnoutSet, callbacks.turnoutFavorite, callbacks.closeTurnouts,
+                  callbacks.refreshTurnouts);
     routes.begin(callbacks.routeStart, callbacks.closeRoutes);
     power.begin(callbacks.setPower, callbacks.closePower);
     settings.begin(callbacks.brightness, callbacks.sleep, callbacks.closeSettings);
@@ -239,6 +240,21 @@ void refreshCommandStationLists()
     routesAvailable = false;
     routes.clear();
     connectionUI.setStatus("Refreshing roster, turnouts, and routes");
+}
+
+void refreshRosterList()
+{
+    dcc.refreshRoster();
+    rosterAvailable = false;
+    rosterLoaded = false;
+    restoredLastRosterDefinition = false;
+}
+
+void refreshTurnoutList()
+{
+    dcc.refreshTurnouts();
+    turnoutsAvailable = false;
+    turnouts.clear();
 }
 
 void closeTurnoutPage()
@@ -791,12 +807,14 @@ void initializeApplication()
         saveFunctionPage,
         selectRosterLocomotive,
         closeLocomotiveSelection,
+        refreshRosterList,
         saveConnectionSettings,
         closeConnectionSettings,
         refreshCommandStationLists,
         setTurnoutState,
         toggleTurnoutFavorite,
         closeTurnoutPage,
+        refreshTurnoutList,
         startRoute,
         closeRoutePage,
         setTrackPower,
