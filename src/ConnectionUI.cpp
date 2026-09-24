@@ -37,12 +37,13 @@ lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text,
 }
 }
 
-void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback refresh)
+void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback refresh, DiagnosticsCallback diagnostics)
 {
     lvgl_port_lock(-1);
     saveCallback = save;
     backCallback = back;
     refreshCallback = refresh;
+    diagnosticsCallback = diagnostics;
     screen = lv_obj_create(nullptr);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x080C10), 0);
@@ -84,7 +85,8 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
 
     backButton = makeButton(form, layout, "Back", -90, 350, backEvent, this);
     refreshButton = makeButton(form, layout, "Refresh", 0, 350, refreshEvent, this);
-    makeButton(form, layout, "Save", 90, 350, saveEvent, this);
+    makeButton(form, layout, "DIAG", 90, 350, diagnosticsEvent, this);
+    makeButton(form, layout, "Save", 0, 400, saveEvent, this);
 
     editorLabel = lv_label_create(screen);
     lv_label_set_text(editorLabel, "EDIT CONNECTION DETAIL");
@@ -220,6 +222,7 @@ void ConnectionUI::refreshEvent(lv_event_t *event)
     if (ui->refreshCallback)
         ui->refreshCallback();
 }
+void ConnectionUI::diagnosticsEvent(lv_event_t *event) { auto *ui=static_cast<ConnectionUI*>(lv_event_get_user_data(event)); if(ui->diagnosticsCallback) ui->diagnosticsCallback(); }
 
 void ConnectionUI::save()
 {

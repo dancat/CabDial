@@ -10,7 +10,8 @@ public:
     using SaveCallback = void (*)(const ConnectionSettings &settings);
     using BackCallback = void (*)();
     using RefreshCallback = void (*)();
-    void begin(SaveCallback save, BackCallback back, RefreshCallback refresh);
+    using DiagnosticsCallback = void (*)();
+    void begin(SaveCallback save, BackCallback back, RefreshCallback refresh, DiagnosticsCallback diagnostics = nullptr);
     void setDisplayProfile(const DisplayProfile &value) { profile = value; }
     void show(const ConnectionSettings &settings, bool requireConfiguration);
     void hide();
@@ -37,12 +38,14 @@ private:
     SaveCallback saveCallback = nullptr;
     BackCallback backCallback = nullptr;
     RefreshCallback refreshCallback = nullptr;
+    DiagnosticsCallback diagnosticsCallback = nullptr;
 
     static void fieldEvent(lv_event_t *event);
     static void keyboardEvent(lv_event_t *event);
     static void saveEvent(lv_event_t *event);
     static void backEvent(lv_event_t *event);
     static void refreshEvent(lv_event_t *event);
+    static void diagnosticsEvent(lv_event_t *event);
     void finishEditing(bool saveValue);
     void save();
 };

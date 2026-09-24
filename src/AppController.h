@@ -36,6 +36,7 @@ public:
         ConnectionUI::SaveCallback saveConnection = nullptr;
         ConnectionUI::BackCallback closeConnection = nullptr;
         ConnectionUI::RefreshCallback refreshLists = nullptr;
+        ConnectionUI::DiagnosticsCallback diagnostics = nullptr;
         TurnoutUI::SetCallback turnoutSet = nullptr;
         TurnoutUI::FavoriteCallback turnoutFavorite = nullptr;
         TurnoutUI::BackCallback closeTurnouts = nullptr;

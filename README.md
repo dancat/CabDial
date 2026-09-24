@@ -25,6 +25,8 @@ names are examples.
 - DCC-EX Wi-Fi and TCP connection setup on the touchscreen
 - Saved Wi-Fi network, Command Station IP address, and port
 - Connection status displayed on the throttle screen
+- Connection diagnostics for Wi-Fi, DCC-EX TCP, roster, turnout, and route
+  loading state
 - Speed control with the on-screen arc and rotary encoder
 - 50 and 75 speed presets, selected-locomotive stop, direction, and global
   emergency-stop controls
@@ -84,6 +86,27 @@ Viewe device is the only implemented hardware target today. See
 On first startup, the connection screen requires a Wi-Fi SSID, Wi-Fi password,
 Command Station address, and port. DCC-EX normally uses TCP port `2560`.
 
+## First-time setup
+
+1. Power the throttle. The connection screen opens when no saved connection is
+   available.
+2. Enter the Wi-Fi network name and password used by the DCC-EX Command
+   Station. The throttle connects as a normal Wi-Fi client.
+3. Enter the Command Station's local IP address and TCP port, normally `2560`,
+   then select **Save**. These details are stored on the throttle for the next
+   startup.
+4. Wait for the connection indicator on the throttle screen to show that
+   DCC-EX is connected. If lists do not appear, open the connection screen and
+   use **Refresh**. **DIAG** shows the individual Wi-Fi, TCP, roster, turnout,
+   and route loading states.
+5. Open the cog icon, select **Button Shortcuts**, and choose an action for
+   single press, double press, and long press. Each can use F0, F1, F2, Stop,
+   Change direction, or Emergency stop. The selections are saved immediately.
+
+In locomotive, turnout, and route lists, a single physical-button press
+selects the current entry and returns to the throttle. A double press returns
+without making a selection.
+
 ## Controls
 
 | Control | Action |
@@ -99,6 +122,7 @@ Command Station address, and port. DCC-EX normally uses TCP port `2560`.
 | POWER | Open track-power control |
 | ROUTES | Open route control |
 | Network icon | Open connection settings |
+| DIAG | Open live Wi-Fi, TCP, roster, turnout, and route diagnostics |
 | Cog icon | Open display settings |
 
 The encoder can browse locomotive, turnout, and route lists. In a list, the
@@ -129,7 +153,7 @@ long-press actions are configured under **Settings → Button Shortcuts**.
 - `src/DccController.*` — DCC-EX protocol connection and application model
 - `src/AppController.*` — application runtime, UI behavior, and input flow
 - `src/*UI.*` — LVGL pages for throttle, locomotive selection, connection,
-  turnouts, routes, power, display settings, and button shortcuts
+  diagnostics, turnouts, routes, power, display settings, and button shortcuts
 - `src/Device.*` and `src/ViewEDevice.*` — board/display abstraction and the
   current Viewe implementation
 - `docs/` — DCCEXProtocol references and hardware-porting notes

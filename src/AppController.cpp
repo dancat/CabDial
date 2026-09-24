@@ -63,7 +63,7 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
     throttle.setSpeedPresetCallback(callbacks.speedPreset);
     throttle.setFunctionPageCallback(callbacks.functionPage);
     selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster);
-    connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists);
+    connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists, callbacks.diagnostics);
     turnouts.begin(callbacks.turnoutSet, callbacks.turnoutFavorite, callbacks.closeTurnouts,
                   callbacks.refreshTurnouts);
     routes.begin(callbacks.routeStart, callbacks.closeRoutes);
@@ -87,6 +87,7 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
 #include "LocomotiveFunctionStates.h"
 #include "LocomotiveSelectionUI.h"
 #include "ConnectionUI.h"
+#include "ConnectionDiagnosticsUI.h"
 #include "ConnectionSettingsStore.h"
 #include "TurnoutUI.h"
 #include "RouteUI.h"
@@ -151,6 +152,7 @@ ThrottleUI throttleUI;
 FunctionUI functionUI;
 LocomotiveSelectionUI selectionUI;
 ConnectionUI connectionUI;
+ConnectionDiagnosticsUI diagnosticsUI;
 TurnoutUI turnoutUI;
 RouteUI routeUI;
 PowerUI powerUI;
@@ -256,6 +258,8 @@ void openConnectionSettings()
     noteDisplayActivity();
     connectionUI.show(connectionSettings, !connectionConfigured);
 }
+void openDiagnostics() { diagnosticsUI.show(); }
+void closeDiagnostics() { diagnosticsUI.hide(); }
 
 void refreshCommandStationLists()
 {
@@ -875,6 +879,7 @@ void initializeApplication()
         saveConnectionSettings,
         closeConnectionSettings,
         refreshCommandStationLists,
+        openDiagnostics,
         setTurnoutState,
         toggleTurnoutFavorite,
         closeTurnoutPage,
@@ -889,6 +894,8 @@ void initializeApplication()
         closeDisplaySettings
     };
     app.initializeUi(uiCallbacks);
+    diagnosticsUI.setDisplayProfile(device.displayProfile());
+    diagnosticsUI.begin(closeDiagnostics);
     functionUI.setDisplayProfile(device.displayProfile());
     functionUI.begin(onUIFunction, closeFunctionPage);
     throttleUI.setMoreFunctionsCallback(openFunctionPage);
@@ -926,6 +933,8 @@ void updateApplication()
     // Serialize protocol/list updates with the touch and physical callbacks.
     lvgl_port_lock(-1);
     dcc.update();
+    if (diagnosticsUI.isVisible())
+        diagnosticsUI.update(dcc.wifiConnected(), dcc.connected(), dcc.rosterReady(), dcc.turnoutsReady(), dcc.routesReady());
     throttleUI.setConnectionStatus(
         dcc.connectionStatusText(),
         dcc.connectionStatus() == DccController::ConnectionStatus::Ready
