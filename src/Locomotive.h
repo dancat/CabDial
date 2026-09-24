@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-static constexpr uint8_t MAX_LOCO_FUNCTIONS = 29;
+static constexpr uint8_t MAX_LOCO_FUNCTIONS = 32;
 
 struct LocoFunction
 {

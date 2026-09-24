@@ -31,8 +31,8 @@ names are examples.
 - Locomotive selection from the DCC-EX roster
 - Manual locomotive address entry for locomotives outside the roster
 - Roster names and function definitions, including momentary functions
-- Three large function cards with paging for additional roster functions,
-  including text and recognised function pictograms
+- Three large F0–F2 shortcut cards with text and recognised function
+  pictograms, plus an F+ screen for additional functions through F31
 - Per-locomotive function state retained while the throttle remains powered
 - Synchronization of the selected locomotive's speed, direction, and function
   broadcasts from other throttles
@@ -91,7 +91,7 @@ Command Station address, and port. DCC-EX normally uses TCP port `2560`.
 | Speed arc / encoder | Change selected locomotive speed |
 | `LOCO` panel | Open roster and manual-address selection |
 | Function cards | Toggle latching functions or hold momentary functions |
-| Function chevrons | Show the previous or next group of three functions |
+| F+ | Open all available roster functions, or F0–F31 for a manual locomotive |
 | Direction control | Stop and change direction |
 | Stop | Stop the selected locomotive |
 | `!` | Send a global DCC-EX emergency stop |

@@ -39,6 +39,8 @@ public:
     using FunctionPageCallback = void (*)(uint8_t page);
     void setFunctionPageCallback(FunctionPageCallback callback) { functionPageCallback = callback; }
     void setFunctionPage(uint8_t page);
+    using MoreFunctionsCallback = void (*)();
+    void setMoreFunctionsCallback(MoreFunctionsCallback callback) { moreFunctionsCallback = callback; }
     void setConnectionStatus(const char *text, bool connected);
     void setTrackPowerStatus(bool known, bool on);
 
@@ -88,6 +90,7 @@ private:
     FunctionSlot functionSlots[FUNCTION_SLOT_COUNT];
     lv_obj_t *previousPageButton = nullptr;
     lv_obj_t *nextPageButton = nullptr;
+    lv_obj_t *moreFunctionsButton = nullptr;
     lv_obj_t *pageLabel = nullptr;
     uint8_t functionPage = 0;
     uint8_t availableFunctionCount = 0;
@@ -110,6 +113,7 @@ private:
     EmergencyStopCallback emergencyStopCallback = nullptr;
     SpeedPresetCallback speedPresetCallback = nullptr;
     FunctionPageCallback functionPageCallback = nullptr;
+    MoreFunctionsCallback moreFunctionsCallback = nullptr;
 
     static void functionButtonEvent(lv_event_t *event);
     static void functionGestureEvent(lv_event_t *event);
@@ -125,6 +129,7 @@ private:
     static void stopButtonEvent(lv_event_t *event);
     static void emergencyStopButtonEvent(lv_event_t *event);
     static void speedPresetButtonEvent(lv_event_t *event);
+    static void moreFunctionsEvent(lv_event_t *event);
     void updateFunctionSlots(const Locomotive &locomotive);
     void updateFunctionAppearance(const Locomotive &locomotive);
 };

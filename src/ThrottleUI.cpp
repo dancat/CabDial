@@ -547,6 +547,16 @@ void ThrottleUI::begin()
     lv_obj_set_style_text_font(pageLabel, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(pageLabel, lv_color_hex(0x8899AA), 0);
     lv_obj_align(pageLabel, LV_ALIGN_TOP_MID, 0, layout.y(312));
+    lv_obj_add_flag(previousPageButton, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(nextPageButton, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(pageLabel, LV_OBJ_FLAG_HIDDEN);
+    moreFunctionsButton = lv_btn_create(screen);
+    lv_obj_set_size(moreFunctionsButton, layout.width(86), layout.height(28));
+    lv_obj_align(moreFunctionsButton, LV_ALIGN_BOTTOM_MID, 0, -layout.y(10));
+    lv_obj_set_style_bg_color(moreFunctionsButton, lv_color_hex(0x263746), 0);
+    lv_obj_t *moreLabel = lv_label_create(moreFunctionsButton);
+    lv_label_set_text(moreLabel, "F+"); lv_obj_center(moreLabel);
+    lv_obj_add_event_cb(moreFunctionsButton, moreFunctionsEvent, LV_EVENT_CLICKED, this);
     
     auto makeNavigationTile = [&](const char *text, int y, lv_event_cb_t callback,
                                   lv_obj_t **labelOut = nullptr)
@@ -829,25 +839,14 @@ void ThrottleUI::updateFunctionSlots(
         functionPage = 0;
     }
     displayedLocomotive = &locomotive;
-    availableFunctionCount = 0;
-    if (locomotive.fromRoster)
-    {
-        for (uint8_t function = 0; function < MAX_LOCO_FUNCTIONS; ++function)
-        {
-            if (locomotive.functionDefinitions[function].available)
-                availableFunctions[availableFunctionCount++] = function;
-        }
-    }
-    else
-    {
-        for (uint8_t function = 0; function < MANUAL_FUNCTION_COUNT; ++function)
-            availableFunctions[availableFunctionCount++] = function;
-    }
+    availableFunctionCount = FUNCTION_SLOT_COUNT;
+    for (uint8_t function = 0; function < FUNCTION_SLOT_COUNT; ++function)
+        availableFunctions[function] = function;
 
     const uint8_t pageCount = (availableFunctionCount + FUNCTION_SLOT_COUNT - 1) / FUNCTION_SLOT_COUNT;
     if (functionPage >= pageCount)
         functionPage = pageCount ? pageCount - 1 : 0;
-    if (pageCount > 1)
+    if (false)
     {
         char pageText[16];
         snprintf(pageText, sizeof(pageText), "%u / %u", functionPage + 1, pageCount);
@@ -1074,4 +1073,10 @@ void ThrottleUI::speedPresetButtonEvent(lv_event_t *event)
         ui->speedPresetCallback(50);
     else if (button == ui->speedPreset75Button)
         ui->speedPresetCallback(75);
+}
+
+void ThrottleUI::moreFunctionsEvent(lv_event_t *event)
+{
+    auto *ui = static_cast<ThrottleUI *>(lv_event_get_user_data(event));
+    if (ui && ui->moreFunctionsCallback) ui->moreFunctionsCallback();
 }

@@ -81,6 +81,7 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
 #include "DccController.h"
 
 #include "ThrottleUI.h"
+#include "FunctionUI.h"
 
 #include "Locomotive.h"
 #include "LocomotiveFunctionStates.h"
@@ -147,6 +148,7 @@ enum ControllerMode
 ControllerMode mode = MODE_SPEED;
 
 ThrottleUI throttleUI;
+FunctionUI functionUI;
 LocomotiveSelectionUI selectionUI;
 ConnectionUI connectionUI;
 TurnoutUI turnoutUI;
@@ -173,6 +175,18 @@ void noteDisplayActivity()
 void closeDisplaySettings()
 {
     settingsUI.hide();
+}
+
+void closeFunctionPage()
+{
+    functionUI.hide();
+    throttleUI.update(locomotive, mode == MODE_SPEED);
+}
+
+void openFunctionPage()
+{
+    noteDisplayActivity();
+    functionUI.show(locomotive);
 }
 
 void setDisplayBrightness(uint8_t brightness)
@@ -875,6 +889,9 @@ void initializeApplication()
         closeDisplaySettings
     };
     app.initializeUi(uiCallbacks);
+    functionUI.setDisplayProfile(device.displayProfile());
+    functionUI.begin(onUIFunction, closeFunctionPage);
+    throttleUI.setMoreFunctionsCallback(openFunctionPage);
     dcc.setLocoUpdateCallback(onLocoBroadcast);
     dcc.setTurnoutUpdateCallback(onTurnoutBroadcast);
     dcc.setTrackPowerCallback(onTrackPowerBroadcast);
