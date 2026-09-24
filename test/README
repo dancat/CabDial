@@ -1,0 +1,30 @@
+
+This directory is intended for PlatformIO Test Runner and project tests.
+
+Unit Testing is a software testing method by which individual units of
+source code, sets of one or more MCU program modules together with associated
+control data, usage procedures, and operating procedures, are tested to
+determine whether they are fit for use. Unit testing finds problems early
+in the development cycle.
+
+More information about PlatformIO Unit Testing:
+- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+
+## On-device connection setup check
+
+1. Flash the firmware. If no profile has been saved, the connection editor opens.
+2. Enter the Wi-Fi network, optional Wi-Fi password, DCC-EX Command Station IP
+   address, and port, then choose **Save & Connect**.
+3. Confirm the bottom status button progresses through Wi-Fi and DCC-EX
+   connection states, then shows **DCC-EX CONNECTED**.
+4. Tap that status button, edit a value if needed, and save it again.
+5. Restart the throttle and confirm it reconnects using the saved profile.
+
+## On-device display settings check
+
+1. Open the connection editor from the connection-status button and choose
+   **Display**. The control is also available during first-time connection setup.
+2. Adjust brightness and confirm the backlight changes immediately.
+3. Select a sleep timeout, wait for the selected idle period, and confirm the
+   backlight turns off. Turn the encoder or press the physical button to wake it.
+4. Restart the throttle and confirm both display settings were retained.
