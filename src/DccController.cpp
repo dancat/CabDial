@@ -514,6 +514,17 @@ void DccController::selectLoco(uint16_t address)
     Serial.println(address);
 }
 
+void DccController::releaseLoco()
+{
+    if (dccLoco == nullptr)
+        return;
+
+    Serial.print("Released locomotive address: ");
+    Serial.println(dccLoco->getAddress());
+    delete dccLoco;
+    dccLoco = nullptr;
+}
+
 void DccController::stopLoco()
 {
     if (!serverReady() || dccLoco == nullptr)

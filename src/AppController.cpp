@@ -62,7 +62,8 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
     throttle.setEmergencyStopCallback(callbacks.emergencyStop);
     throttle.setSpeedPresetCallback(callbacks.speedPreset);
     throttle.setFunctionPageCallback(callbacks.functionPage);
-    selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster);
+    selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster,
+                    callbacks.releaseLocomotive);
     connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists,
                      callbacks.diagnostics, callbacks.connectWifi,
                      callbacks.discoverCommandStations, callbacks.connectServer);
@@ -540,6 +541,15 @@ void closeLocomotiveSelection()
     throttleUI.update(locomotive, mode == MODE_SPEED);
 }
 
+void releaseSelectedLocomotive()
+{
+    noteDisplayActivity();
+    dcc.releaseLoco();
+    locomotive = Locomotive{};
+    throttleUI.setLocomotive(locomotive);
+    closeLocomotiveSelection();
+}
+
 void selectRosterLocomotive(uint16_t address)
 {
     if (address == 0)
@@ -592,7 +602,11 @@ bool applyListEncoderTurnImmediately(int direction)
         return false;
 
     bool applied = false;
-    if (selectionUI.isVisible())
+    if (connectionUI.isVisible())
+    {
+        applied = connectionUI.move(direction);
+    }
+    else if (selectionUI.isVisible())
     {
         selectionUI.move(direction);
         applied = true;
@@ -738,6 +752,7 @@ static void SingleClickCb(
     noteDisplayActivity();
     if (connectionUI.isVisible())
     {
+        connectionUI.selectCurrent();
         lvgl_port_unlock();
         return;
     }
@@ -927,6 +942,7 @@ void initializeApplication()
         selectRosterLocomotive,
         closeLocomotiveSelection,
         refreshRosterList,
+        releaseSelectedLocomotive,
         saveConnectionSettings,
         closeConnectionSettings,
         refreshCommandStationLists,

@@ -33,6 +33,7 @@ public:
         LocomotiveSelectionUI::SelectCallback rosterSelected = nullptr;
         LocomotiveSelectionUI::BackCallback closeSelection = nullptr;
         LocomotiveSelectionUI::RefreshCallback refreshRoster = nullptr;
+        LocomotiveSelectionUI::ReleaseCallback releaseLocomotive = nullptr;
         ConnectionUI::SaveCallback saveConnection = nullptr;
         ConnectionUI::BackCallback closeConnection = nullptr;
         ConnectionUI::RefreshCallback refreshLists = nullptr;

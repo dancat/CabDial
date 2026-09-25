@@ -31,6 +31,9 @@ public:
     void showCommandStationPicker(const std::vector<CommandStationInfo> &stations,
         bool discoveryAvailable);
     void setStatus(const char *text, bool error = false);
+    // Called while the LVGL mutex is held by the physical-input path.
+    bool move(int delta);
+    bool selectCurrent();
 
 private:
     DisplayProfile profile {480, 480, true, 0, 0};

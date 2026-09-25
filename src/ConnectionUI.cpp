@@ -365,6 +365,55 @@ void ConnectionUI::save()
         saveCallback(settings);
 }
 
+bool ConnectionUI::move(int delta)
+{
+    if (!visible || delta == 0)
+        return false;
+
+    if (serverPickerVisible)
+    {
+        if (commandStations.empty())
+            return false;
+        int selected = static_cast<int>(lv_roller_get_selected(serverRoller)) + delta;
+        selected = selected < 0 ? 0 : selected >= static_cast<int>(commandStations.size())
+            ? static_cast<int>(commandStations.size()) - 1 : selected;
+        lv_roller_set_selected(serverRoller, selected, LV_ANIM_OFF);
+        updateCommandStationSelection();
+        return true;
+    }
+
+    if (!lv_obj_has_flag(networkPicker, LV_OBJ_FLAG_HIDDEN))
+    {
+        if (networkNames.empty())
+            return false;
+        int selected = static_cast<int>(lv_roller_get_selected(networkRoller)) + delta;
+        selected = selected < 0 ? 0 : selected >= static_cast<int>(networkNames.size())
+            ? static_cast<int>(networkNames.size()) - 1 : selected;
+        lv_roller_set_selected(networkRoller, selected, LV_ANIM_OFF);
+        updateNetworkSelection();
+        return true;
+    }
+
+    return false;
+}
+
+bool ConnectionUI::selectCurrent()
+{
+    if (!visible)
+        return false;
+    if (serverPickerVisible && !commandStations.empty())
+    {
+        selectCommandStation();
+        return true;
+    }
+    if (!lv_obj_has_flag(networkPicker, LV_OBJ_FLAG_HIDDEN) && !networkNames.empty())
+    {
+        selectNetwork();
+        return true;
+    }
+    return false;
+}
+
 void ConnectionUI::showNetworkPicker()
 {
     wifiCredentialsMode = false;

@@ -47,6 +47,7 @@ public:
     void setSpeed(uint16_t address, uint8_t speed, bool directionForward);
     void setFunction(uint16_t address, uint8_t function, bool state);
     void selectLoco(uint16_t address);
+    void releaseLoco();
     void stopLoco();
     bool rosterReady();
     int rosterCount();

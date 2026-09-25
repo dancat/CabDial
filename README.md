@@ -37,7 +37,9 @@ are examples.
 - 50 and 75 speed presets, selected-locomotive stop, direction, and global
   emergency-stop controls
 - Locomotive selection from the DCC-EX roster
-- Manual locomotive address entry for locomotives outside the roster
+- Five-digit manual locomotive address entry for locomotives outside the roster,
+  with independent digit controls and DCC's `1–10,239` address range
+- Release action to clear the locomotive selected by this throttle
 - Roster names and function definitions, including momentary functions
 - Three large F0–F2 shortcut cards with text and recognised function
   pictograms, plus an F+ action in the locomotive card for additional
@@ -123,6 +125,8 @@ without making a selection.
 | --- | --- |
 | Speed arc / encoder | Change selected locomotive speed |
 | Locomotive card | Open roster and manual-address selection; displays the roster name when available |
+| Locomotive list: Release | Clear the locomotive selected by this throttle |
+| Manual address editor | Set each of five digits independently; valid addresses are `1–10,239` |
 | Function cards | Toggle latching functions or hold momentary functions |
 | F+ in the locomotive card | Open all available roster functions, or F0–F31 for a manual locomotive |
 | Direction control | Stop and change direction |
@@ -136,10 +140,15 @@ without making a selection.
 | Cog icon | Open display settings |
 
 The encoder uses the ESP32-S3 PCNT hardware peripheral and can browse
-locomotive, turnout, and route lists without waiting for DCC/TCP processing.
-In a list, the physical button selects and closes on a single press, or returns
-without an action on a double press. On the home screen, its single-, double-,
-and long-press actions are configured under **Settings → Button Shortcuts**.
+locomotive, turnout, route, Wi-Fi-network, and Command-Station lists without
+waiting for DCC/TCP processing. A single physical-button press uses the current
+entry: it selects a locomotive, closes a turnout, starts a route, or advances
+from a Wi-Fi or Command-Station picker. A double press returns without an
+action. In the manual address editor, turning first moves focus among digits
+and lower actions; press to edit the focused digit, turn to change it, and
+press again to return to focus navigation. On the home screen, the single-,
+double-, and long-press actions are configured under **Settings → Button
+Shortcuts**.
 
 ## Limitations and current scope
 
