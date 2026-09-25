@@ -8,6 +8,7 @@
 #include "ConnectionSettings.h"
 #include "TurnoutDefinition.h"
 #include "RouteDefinition.h"
+#include "CommandStationInfo.h"
 
 class DccController : private DCCEXProtocolDelegate
 {
@@ -21,12 +22,17 @@ public:
     {
         NotConfigured,
         ConnectingWiFi,
+        ReconnectingWiFi,
+        AwaitingServer,
         ConnectingServer,
         Ready
     };
 
     void begin();
     bool connect(const ConnectionSettings &settings);
+    bool connectWifi(const String &ssid, const String &password);
+    bool connectServer(const String &address, uint16_t port);
+    bool discoverCommandStations(std::vector<CommandStationInfo> &stations);
 
     void update();
 
@@ -70,6 +76,9 @@ private:
     void receivedTrackPower(TrackPower state) override;
     void resetListLoadRetries();
     void requestListsWithFallback();
+    void startWifiConnection(const String &ssid, const String &password);
+    void retryWifiConnection();
+    void resetServerSession();
 
     WiFiClient client;
     DCCEXProtocol protocol;
@@ -78,18 +87,24 @@ private:
 
     IPAddress serverAddress;
     uint16_t serverPort = 2560;
+    String wifiSsid;
+    String wifiPassword;
 
     bool protocolConnected = false;
     bool versionRequested = false;
     bool sessionVersionReceived = false;
     bool wifiWasConnected = false;
+    bool wifiConnectedSinceStart = false;
     bool configured = false;
+    bool serverConfigured = false;
+    bool mdnsStarted = false;
     ConnectionStatus status = ConnectionStatus::NotConfigured;
     LocoUpdateCallback locoUpdateCallback = nullptr;
     TurnoutUpdateCallback turnoutUpdateCallback = nullptr;
     TrackPowerCallback trackPowerCallback = nullptr;
 
     unsigned long lastConnectionAttempt = 0;
+    unsigned long lastWifiConnectionAttempt = 0;
     unsigned long connectionStartedAt = 0;
     unsigned long lastVersionRequestAt = 0;
     unsigned long listLoadingStartedAt = 0;
@@ -99,6 +114,7 @@ private:
     unsigned long lastObservedServerResponseAt = 0;
     bool serverRespondedSinceConnection = false;
     static constexpr unsigned long CONNECTION_RETRY_INTERVAL = 5000;
+    static constexpr unsigned long WIFI_RETRY_INTERVAL = 10000;
     static constexpr unsigned long VERSION_REQUEST_INTERVAL = 5000;
     static constexpr unsigned long VERSION_HANDSHAKE_TIMEOUT = 15000;
     static constexpr unsigned long LIST_FALLBACK_DELAY = 8000;

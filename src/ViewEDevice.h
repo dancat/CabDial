@@ -8,8 +8,11 @@ namespace esp_panel::board
 class Board;
 }
 
-class ESP_Knob;
 class Button;
+struct pcnt_unit_t;
+typedef struct pcnt_unit_t *pcnt_unit_handle_t;
+struct esp_timer;
+typedef struct esp_timer *esp_timer_handle_t;
 
 class ViewEDevice final : public Device
 {
@@ -21,9 +24,14 @@ public:
 
 private:
     esp_panel::board::Board *board = nullptr;
-    ESP_Knob *knob = nullptr;
+    pcnt_unit_handle_t encoderUnit = nullptr;
+    esp_timer_handle_t encoderTimer = nullptr;
+    InputCallbacks encoderCallbacks;
+    int encoderCount = 0;
     Button *button = nullptr;
     DisplayProfile profile {viewe::DISPLAY_WIDTH, viewe::DISPLAY_HEIGHT,
         viewe::DISPLAY_IS_ROUND, viewe::SAFE_TOP, viewe::SAFE_BOTTOM};
     DeviceCapabilities deviceCapabilities {true, true, true, true};
+    static void pollEncoder(void *arg);
+    bool beginEncoder(const InputCallbacks &callbacks);
 };

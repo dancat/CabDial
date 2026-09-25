@@ -6,7 +6,6 @@ bool OperatingPreferencesStore::load(OperatingPreferences &preferences) const
     Preferences storage;
     if (!storage.begin("dcc-operating", true))
         return false;
-    preferences.lastLocomotiveAddress = storage.getUShort("last-loco", 101);
     preferences.functionPage = storage.getUChar("function-page", 0);
     preferences.displayBrightness = storage.getUChar("display-bright", 100);
     preferences.displaySleepSeconds = storage.getUShort("display-sleep", 0);
@@ -44,8 +43,7 @@ bool OperatingPreferencesStore::save(const OperatingPreferences &preferences) co
             ids += ',';
         ids += String(id);
     }
-    const bool saved = storage.putUShort("last-loco", preferences.lastLocomotiveAddress) == sizeof(uint16_t) &&
-        storage.putUChar("function-page", preferences.functionPage) == sizeof(uint8_t) &&
+    const bool saved = storage.putUChar("function-page", preferences.functionPage) == sizeof(uint8_t) &&
         storage.putUChar("display-bright", preferences.displayBrightness) == sizeof(uint8_t) &&
         storage.putUShort("display-sleep", preferences.displaySleepSeconds) == sizeof(uint16_t) &&
         storage.putUChar("button-single", static_cast<uint8_t>(preferences.singlePressAction)) == sizeof(uint8_t) &&

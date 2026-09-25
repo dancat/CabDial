@@ -57,6 +57,10 @@ private:
     lv_obj_t *emergencyStopButton = nullptr;
     lv_obj_t *speedPreset50Button = nullptr;
     lv_obj_t *speedPreset75Button = nullptr;
+    lv_obj_t *speedPreset50Label = nullptr;
+    lv_obj_t *speedPreset75Label = nullptr;
+    lv_obj_t *stopIcon = nullptr;
+    lv_obj_t *emergencyStopLabel = nullptr;
 
     // Locomotive
     lv_obj_t *addressTitleLabel = nullptr;
@@ -66,9 +70,11 @@ private:
     lv_obj_t *connectionIndicator = nullptr;
     lv_obj_t *settingsButton = nullptr;
     lv_obj_t *turnoutButton = nullptr;
+    lv_obj_t *turnoutLabel = nullptr;
     lv_obj_t *powerButton = nullptr;
     lv_obj_t *powerLabel = nullptr;
     lv_obj_t *routeButton = nullptr;
+    lv_obj_t *routeLabel = nullptr;
 
     // Direction
     lv_obj_t *directionArrowLabel = nullptr;
@@ -90,12 +96,14 @@ private:
     lv_obj_t *previousPageButton = nullptr;
     lv_obj_t *nextPageButton = nullptr;
     lv_obj_t *moreFunctionsButton = nullptr;
+    lv_obj_t *moreFunctionsLabel = nullptr;
     lv_obj_t *pageLabel = nullptr;
     uint8_t functionPage = 0;
     uint8_t availableFunctionCount = 0;
     uint8_t availableFunctions[MAX_LOCO_FUNCTIONS] = {};
     const Locomotive *displayedLocomotive = nullptr;
     uint16_t displayedAddress = 0;
+    bool controlsAvailable = false;
 
     // Future navigation
     lv_obj_t *navLabel = nullptr;
@@ -131,4 +139,5 @@ private:
     static void moreFunctionsEvent(lv_event_t *event);
     void updateFunctionSlots(const Locomotive &locomotive);
     void updateFunctionAppearance(const Locomotive &locomotive);
+    void updateControlAvailability(bool available);
 };

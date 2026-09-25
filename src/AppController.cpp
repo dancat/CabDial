@@ -63,7 +63,9 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
     throttle.setSpeedPresetCallback(callbacks.speedPreset);
     throttle.setFunctionPageCallback(callbacks.functionPage);
     selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster);
-    connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists, callbacks.diagnostics);
+    connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists,
+                     callbacks.diagnostics, callbacks.connectWifi,
+                     callbacks.discoverCommandStations, callbacks.connectServer);
     turnouts.begin(callbacks.turnoutSet, callbacks.turnoutFavorite, callbacks.closeTurnouts,
                   callbacks.refreshTurnouts);
     routes.begin(callbacks.routeStart, callbacks.closeRoutes);
@@ -104,10 +106,25 @@ DccController dcc;
 ConnectionSettingsStore connectionStore;
 ConnectionSettings connectionSettings;
 bool connectionConfigured = false;
+String pendingWifiSsid;
+String pendingWifiPassword;
 OperatingPreferencesStore operatingPreferencesStore;
 OperatingPreferences operatingPreferences;
 unsigned long lastDisplayActivity = 0;
 bool displaySleeping = false;
+String displayedConnectionStatus;
+bool displayedConnectionReady = false;
+String displayedConnectionUiStatus;
+bool connectionUiWasVisible = false;
+
+// The hardware encoder callback runs outside the application loop. Keep it
+// short and consume queued turns from the normal application loop.
+portMUX_TYPE encoderTurnMux = portMUX_INITIALIZER_UNLOCKED;
+int32_t pendingEncoderTurns = 0;
+static constexpr int32_t MAX_PENDING_ENCODER_TURNS = 128;
+// Apply one turn per loop so LVGL can repaint between turns instead of
+// displaying a delayed multi-step jump after a queued batch.
+static constexpr uint8_t MAX_ENCODER_TURNS_PER_UPDATE = 1;
 
 
 // -------------------------------------------------
@@ -117,7 +134,6 @@ Locomotive locomotive;
 LocomotiveFunctionStates savedFunctionStates;
 std::vector<Locomotive> rosterLocomotives;
 bool rosterAvailable = false;
-bool restoredLastRosterDefinition = false;
 std::vector<TurnoutDefinition> turnouts;
 bool turnoutsAvailable = false;
 std::vector<RouteDefinition> routes;
@@ -131,8 +147,6 @@ void changeLocomotiveAddress(uint16_t address)
     manualDefinition.address = address;
     locomotive.applyDefinition(manualDefinition);
     savedFunctionStates.restore(address, locomotive.functionStates);
-    operatingPreferences.lastLocomotiveAddress = address;
-    operatingPreferencesStore.save(operatingPreferences);
 }
 
 
@@ -249,7 +263,50 @@ void saveConnectionSettings(const ConnectionSettings &settings)
     connectionConfigured = true;
     rosterAvailable = false;
     rosterLoaded = false;
-    restoredLastRosterDefinition = false;
+    connectionUI.hide();
+}
+
+void connectWifi(const String &ssid, const String &password)
+{
+    if (!dcc.connectWifi(ssid, password))
+    {
+        connectionUI.setStatus("Choose or enter a Wi-Fi network", true);
+        return;
+    }
+    pendingWifiSsid = ssid;
+    pendingWifiPassword = password;
+    connectionUI.setStatus("Connecting to Wi-Fi...");
+}
+
+bool discoverCommandStations(std::vector<CommandStationInfo> &stations)
+{
+    return dcc.discoverCommandStations(stations);
+}
+
+void connectServer(const String &address, uint16_t port)
+{
+    if (!dcc.connectServer(address, port))
+    {
+        connectionUI.setStatus("DCC-EX address is invalid", true);
+        return;
+    }
+
+    ConnectionSettings settings;
+    settings.wifiSsid = pendingWifiSsid;
+    settings.wifiPassword = pendingWifiPassword;
+    settings.serverAddress = address;
+    settings.serverPort = port;
+    if (!settings.isComplete() || !connectionStore.save(settings))
+    {
+        connectionUI.setStatus("Unable to save connection settings", true);
+        return;
+    }
+
+    connectionSettings = settings;
+    connectionConfigured = true;
+    rosterAvailable = false;
+    rosterLoaded = false;
+    connectionUI.setStatus("Connecting to DCC-EX...");
     connectionUI.hide();
 }
 
@@ -266,7 +323,6 @@ void refreshCommandStationLists()
     dcc.refreshLists();
     rosterAvailable = false;
     rosterLoaded = false;
-    restoredLastRosterDefinition = false;
     turnoutsAvailable = false;
     turnouts.clear();
     routesAvailable = false;
@@ -279,7 +335,6 @@ void refreshRosterList()
     dcc.refreshRoster();
     rosterAvailable = false;
     rosterLoaded = false;
-    restoredLastRosterDefinition = false;
 }
 
 void refreshTurnoutList()
@@ -334,6 +389,8 @@ void openPowerPage()
 void toggleDirection()
 {
     noteDisplayActivity();
+    if (locomotive.address == 0)
+        return;
     locomotive.speed = 0;
     dcc.setSpeed(locomotive.address, locomotive.speed, locomotive.directionForward);
     locomotive.directionForward = !locomotive.directionForward;
@@ -344,6 +401,8 @@ void toggleDirection()
 void stopSelectedLoco()
 {
     noteDisplayActivity();
+    if (locomotive.address == 0)
+        return;
     dcc.setSpeed(locomotive.address, 0, locomotive.directionForward);
     locomotive.speed = 0;
     throttleUI.update(locomotive, mode == MODE_SPEED);
@@ -360,6 +419,8 @@ void emergencyStop()
 void setSpeedPreset(uint8_t speed)
 {
     noteDisplayActivity();
+    if (locomotive.address == 0)
+        return;
     locomotive.speed = speed > 126 ? 126 : speed;
     dcc.setSpeed(locomotive.address, locomotive.speed, locomotive.directionForward);
     throttleUI.update(locomotive, mode == MODE_SPEED);
@@ -372,8 +433,10 @@ void setTrackPower(bool on)
 
 void onTrackPowerBroadcast(bool known, bool on)
 {
+    lvgl_port_lock(-1);
     powerUI.setTrackPower(known, on);
     throttleUI.setTrackPowerStatus(known, on);
+    lvgl_port_unlock();
 }
 
 void setTurnoutState(int id, bool thrown)
@@ -433,6 +496,7 @@ void saveFunctionPage(uint8_t page)
 
 void onTurnoutBroadcast(int id, bool thrown)
 {
+    lvgl_port_lock(-1);
     for (TurnoutDefinition &turnout : turnouts)
     {
         if (turnout.id == id)
@@ -440,20 +504,23 @@ void onTurnoutBroadcast(int id, bool thrown)
             turnout.thrown = thrown;
             if (turnoutUI.isVisible())
                 turnoutUI.show(turnouts, turnoutsAvailable);
+            lvgl_port_unlock();
             return;
         }
     }
+    lvgl_port_unlock();
 }
 
 // Called by DCCEXProtocol for every <l ...> broadcast, including changes made
-// by another connected throttle. The main loop already holds the LVGL lock
-// while DccController processes protocol input.
+// by another connected throttle.
 void onLocoBroadcast(uint16_t address, uint8_t speed, bool directionForward,
     uint32_t functionMap)
 {
+    lvgl_port_lock(-1);
     if (address != locomotive.address)
     {
         savedFunctionStates.saveMask(address, functionMap);
+        lvgl_port_unlock();
         return;
     }
 
@@ -463,6 +530,7 @@ void onLocoBroadcast(uint16_t address, uint8_t speed, bool directionForward,
         locomotive.functionStates[function] = (functionMap & (uint32_t{1} << function)) != 0;
     savedFunctionStates.save(locomotive.address, locomotive.functionStates);
     throttleUI.update(locomotive, mode == MODE_SPEED);
+    lvgl_port_unlock();
 }
 
 void closeLocomotiveSelection()
@@ -485,8 +553,6 @@ void selectRosterLocomotive(uint16_t address)
             continue;
         changeLocomotiveAddress(address);
         locomotive.applyDefinition(entry);
-        operatingPreferences.lastLocomotiveAddress = address;
-        operatingPreferencesStore.save(operatingPreferences);
         locomotive.speed = 0;
         dcc.selectLoco(address);
         mode = MODE_SPEED;
@@ -505,7 +571,8 @@ void selectRosterLocomotive(uint16_t address)
 void openLocomotiveSelection()
 {
     // Match the existing stop-before-select behavior, retaining direction.
-    dcc.setSpeed(locomotive.address, 0, locomotive.directionForward);
+    if (locomotive.address > 0)
+        dcc.setSpeed(locomotive.address, 0, locomotive.directionForward);
     locomotive.speed = 0;
     throttleUI.update(locomotive, mode == MODE_SPEED);
     selectionUI.show(rosterLocomotives, rosterAvailable, locomotive.address);
@@ -513,146 +580,128 @@ void openLocomotiveSelection()
 
 
 // -------------------------------------------------
-// Rotary encoder - decrease
+// Rotary encoder input
 // -------------------------------------------------
+
+bool applyListEncoderTurnImmediately(int direction)
+{
+    // The PCNT timer runs independently of TCP processing. Take the LVGL
+    // mutex only when it is available, so list navigation is immediate and
+    // the timer never waits behind a display update.
+    if (!lvgl_port_lock(0))
+        return false;
+
+    bool applied = false;
+    if (selectionUI.isVisible())
+    {
+        selectionUI.move(direction);
+        applied = true;
+    }
+    else if (turnoutUI.isVisible())
+    {
+        turnoutUI.move(direction);
+        applied = true;
+    }
+    else if (routeUI.isVisible())
+    {
+        routeUI.move(direction);
+        applied = true;
+    }
+
+    if (applied)
+        noteDisplayActivity();
+    lvgl_port_unlock();
+    return applied;
+}
 
 void onKnobLeftEventCallback(
     int count,
     void *usr_data
 )
 {
-    lvgl_port_lock(-1);
-    noteDisplayActivity();
-    if (connectionUI.isVisible())
-    {
-        lvgl_port_unlock();
+    if (applyListEncoderTurnImmediately(-1))
         return;
-    }
-    if (selectionUI.isVisible())
-    {
-        selectionUI.move(-1);
-        lvgl_port_unlock();
-        return;
-    }
-    if (turnoutUI.isVisible())
-    {
-        turnoutUI.move(-1);
-        lvgl_port_unlock();
-        return;
-    }
-    if (routeUI.isVisible())
-    {
-        routeUI.move(-1);
-        lvgl_port_unlock();
-        return;
-    }
-    if (powerUI.isVisible())
-    {
-        lvgl_port_unlock();
-        return;
-    }
-    if (settingsUI.isVisible())
-    {
-        lvgl_port_unlock();
-        return;
-    }
-    if (mode == MODE_SPEED)
-    {
-        if (locomotive.speed > 0)
-        {
-            locomotive.speed--;
-
-            dcc.setSpeed(
-                locomotive.address,
-                locomotive.speed,
-                locomotive.directionForward
-            );
-        }
-    }
-    else
-    {
-        if (locomotive.address > 1)
-            changeLocomotiveAddress(locomotive.address - 1);
-        throttleUI.setLocomotive(locomotive);
-    }
-
-    throttleUI.update(locomotive, mode == MODE_SPEED);
-    
-    lvgl_port_unlock();
-
-
+    portENTER_CRITICAL(&encoderTurnMux);
+    if (pendingEncoderTurns > -MAX_PENDING_ENCODER_TURNS)
+        --pendingEncoderTurns;
+    portEXIT_CRITICAL(&encoderTurnMux);
 }
-
-
-// -------------------------------------------------
-// Rotary encoder - increase
-// -------------------------------------------------
 
 void onKnobRightEventCallback(
     int count,
     void *usr_data
 )
 {
-    lvgl_port_lock(-1);
+    if (applyListEncoderTurnImmediately(1))
+        return;
+    portENTER_CRITICAL(&encoderTurnMux);
+    if (pendingEncoderTurns < MAX_PENDING_ENCODER_TURNS)
+        ++pendingEncoderTurns;
+    portEXIT_CRITICAL(&encoderTurnMux);
+}
+
+void applyEncoderTurn(int direction)
+{
     noteDisplayActivity();
     if (connectionUI.isVisible())
-    {
-        lvgl_port_unlock();
         return;
-    }
     if (selectionUI.isVisible())
     {
-        selectionUI.move(1);
-        lvgl_port_unlock();
+        selectionUI.move(direction);
         return;
     }
     if (turnoutUI.isVisible())
     {
-        turnoutUI.move(1);
-        lvgl_port_unlock();
+        turnoutUI.move(direction);
         return;
     }
     if (routeUI.isVisible())
     {
-        routeUI.move(1);
-        lvgl_port_unlock();
+        routeUI.move(direction);
         return;
     }
     if (powerUI.isVisible())
-    {
-        lvgl_port_unlock();
         return;
-    }
     if (settingsUI.isVisible())
-    {
-        lvgl_port_unlock();
         return;
-    }
     if (mode == MODE_SPEED)
     {
-        if (locomotive.speed < 126)
+        const int speed = static_cast<int>(locomotive.speed) + direction;
+        if (locomotive.address > 0 && speed >= 0 && speed <= 126)
         {
-            locomotive.speed++;
-
-            dcc.setSpeed(
-                locomotive.address,
-                locomotive.speed,
-                locomotive.directionForward
-            );
+            locomotive.speed = static_cast<uint8_t>(speed);
+            dcc.setSpeed(locomotive.address, locomotive.speed, locomotive.directionForward);
         }
     }
     else
     {
-        if (locomotive.address < 9999)
-            changeLocomotiveAddress(locomotive.address + 1);
+        const int address = static_cast<int>(locomotive.address) + direction;
+        if (address >= 1 && address <= 9999)
+            changeLocomotiveAddress(static_cast<uint16_t>(address));
         throttleUI.setLocomotive(locomotive);
     }
 
     throttleUI.update(locomotive, mode == MODE_SPEED);
+}
 
-    lvgl_port_unlock();
+void processPendingEncoderTurns()
+{
+    int32_t turns;
+    portENTER_CRITICAL(&encoderTurnMux);
+    turns = pendingEncoderTurns;
+    if (turns > MAX_ENCODER_TURNS_PER_UPDATE)
+        pendingEncoderTurns -= MAX_ENCODER_TURNS_PER_UPDATE;
+    else if (turns < -MAX_ENCODER_TURNS_PER_UPDATE)
+        pendingEncoderTurns += MAX_ENCODER_TURNS_PER_UPDATE;
+    else
+        pendingEncoderTurns = 0;
+    portEXIT_CRITICAL(&encoderTurnMux);
 
-
+    const int magnitude = static_cast<int>(turns < 0 ? -turns : turns);
+    const int count = min(magnitude, static_cast<int>(MAX_ENCODER_TURNS_PER_UPDATE));
+    const int direction = turns < 0 ? -1 : 1;
+    for (int index = 0; index < count; ++index)
+        applyEncoderTurn(direction);
 }
 
 
@@ -662,9 +711,11 @@ void onKnobRightEventCallback(
 
 static void runHomeShortcut(HomeShortcutAction action)
 {
+    if (action == HomeShortcutAction::EmergencyStop) { emergencyStop(); return; }
+    if (locomotive.address == 0)
+        return;
     if (action == HomeShortcutAction::Stop) { stopSelectedLoco(); return; }
     if (action == HomeShortcutAction::Direction) { toggleDirection(); return; }
-    if (action == HomeShortcutAction::EmergencyStop) { emergencyStop(); return; }
     const uint8_t function = static_cast<uint8_t>(action);
     const bool momentary = locomotive.fromRoster && locomotive.functionDefinitions[function].momentary;
     if (momentary) {
@@ -802,7 +853,7 @@ static void LongPressStartCb(
 
 void onUIFunction(uint8_t function, bool active)
 {
-    if (function >= MAX_LOCO_FUNCTIONS)
+    if (function >= MAX_LOCO_FUNCTIONS || locomotive.address == 0)
     {
         return;
     }
@@ -880,6 +931,9 @@ void initializeApplication()
         closeConnectionSettings,
         refreshCommandStationLists,
         openDiagnostics,
+        connectWifi,
+        discoverCommandStations,
+        connectServer,
         setTurnoutState,
         toggleTurnoutFavorite,
         closeTurnoutPage,
@@ -904,7 +958,6 @@ void initializeApplication()
     dcc.setTrackPowerCallback(onTrackPowerBroadcast);
     operatingPreferencesStore.load(operatingPreferences);
     applyDisplayBrightness(operatingPreferences.displayBrightness);
-    locomotive.address = operatingPreferences.lastLocomotiveAddress;
     throttleUI.setLocomotive(locomotive);
     throttleUI.setFunctionPage(operatingPreferences.functionPage);
     throttleUI.update(locomotive, mode == MODE_SPEED);
@@ -930,19 +983,54 @@ void initializeApplication()
 
 void updateApplication()
 {
-    // Serialize protocol/list updates with the touch and physical callbacks.
+    // Process physical encoder turns before network work. DCC reads can wait
+    // for TCP traffic; doing this first prevents list navigation from being
+    // delayed and then replayed as a burst.
     lvgl_port_lock(-1);
+    processPendingEncoderTurns();
+    lvgl_port_unlock();
+
+    // Protocol processing can wait on network activity. Do not hold the LVGL
+    // mutex while it runs, otherwise touch polling is stalled as well.
     dcc.update();
+
+    const bool openCommandStationPicker = connectionUI.isVisible() &&
+        connectionUI.isAwaitingWifiConnection() && dcc.wifiConnected();
+    std::vector<CommandStationInfo> discoveredCommandStations;
+    bool commandStationDiscoveryAvailable = false;
+    if (openCommandStationPicker)
+        commandStationDiscoveryAvailable = dcc.discoverCommandStations(discoveredCommandStations);
+
+    lvgl_port_lock(-1);
+    connectionUI.update();
     if (diagnosticsUI.isVisible())
         diagnosticsUI.update(dcc.wifiConnected(), dcc.connected(), dcc.serverResponded(),
             dcc.lastServerResponseAgeMs(), dcc.rosterReady(), dcc.turnoutsReady(), dcc.routesReady());
-    throttleUI.setConnectionStatus(
-        dcc.connectionStatusText(),
-        dcc.connectionStatus() == DccController::ConnectionStatus::Ready
-    );
-    if (connectionUI.isVisible() && connectionConfigured)
-        connectionUI.setStatus(dcc.connectionStatusText(),
-            dcc.connectionStatus() == DccController::ConnectionStatus::NotConfigured);
+    const char *connectionStatus = dcc.connectionStatusText();
+    const bool connectionReady =
+        dcc.connectionStatus() == DccController::ConnectionStatus::Ready;
+    if (displayedConnectionStatus != connectionStatus ||
+        displayedConnectionReady != connectionReady)
+    {
+        throttleUI.setConnectionStatus(connectionStatus, connectionReady);
+        displayedConnectionStatus = connectionStatus;
+        displayedConnectionReady = connectionReady;
+    }
+    if (openCommandStationPicker)
+        connectionUI.showCommandStationPicker(discoveredCommandStations,
+            commandStationDiscoveryAvailable);
+    else if (connectionUI.isVisible() &&
+        (connectionConfigured || connectionUI.isWifiCredentialsMode() ||
+         connectionUI.isServerPickerVisible() || connectionUI.isManualServerMode()))
+    {
+        if (!connectionUiWasVisible || displayedConnectionUiStatus != connectionStatus)
+        {
+            connectionUI.setStatus(connectionStatus,
+                dcc.connectionStatus() == DccController::ConnectionStatus::NotConfigured);
+            displayedConnectionUiStatus = connectionStatus;
+        }
+    }
+    connectionUiWasVisible = connectionUI.isVisible();
 
     if (!dcc.rosterReady())
     {
@@ -950,26 +1038,10 @@ void updateApplication()
             selectionUI.show(rosterLocomotives, false, locomotive.address);
         rosterAvailable = false;
         rosterLoaded = false;
-        restoredLastRosterDefinition = false;
     }
     else if (!rosterLoaded)
     {
         rosterAvailable = dcc.copyRoster(rosterLocomotives);
-        if (!restoredLastRosterDefinition)
-        {
-            for (const Locomotive &entry : rosterLocomotives)
-            {
-                if (entry.address != operatingPreferences.lastLocomotiveAddress)
-                    continue;
-                locomotive.applyDefinition(entry);
-                savedFunctionStates.restore(entry.address, locomotive.functionStates);
-                dcc.selectLoco(entry.address);
-                throttleUI.setLocomotive(locomotive);
-                throttleUI.setFunctionPage(operatingPreferences.functionPage);
-                restoredLastRosterDefinition = true;
-                break;
-            }
-        }
         if (selectionUI.isVisible())
             selectionUI.show(rosterLocomotives, rosterAvailable, locomotive.address);
 
@@ -1015,5 +1087,5 @@ void updateApplication()
     }
 
     lvgl_port_unlock();
-    delay(100);
+    delay(10);
 }

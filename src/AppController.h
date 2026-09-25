@@ -37,6 +37,9 @@ public:
         ConnectionUI::BackCallback closeConnection = nullptr;
         ConnectionUI::RefreshCallback refreshLists = nullptr;
         ConnectionUI::DiagnosticsCallback diagnostics = nullptr;
+        ConnectionUI::WifiConnectCallback connectWifi = nullptr;
+        ConnectionUI::DiscoverCallback discoverCommandStations = nullptr;
+        ConnectionUI::ServerConnectCallback connectServer = nullptr;
         TurnoutUI::SetCallback turnoutSet = nullptr;
         TurnoutUI::FavoriteCallback turnoutFavorite = nullptr;
         TurnoutUI::BackCallback closeTurnouts = nullptr;

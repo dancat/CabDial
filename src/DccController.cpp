@@ -1,4 +1,5 @@
 #include "DccController.h"
+#include <ESPmDNS.h>
 
 void DccController::begin()
 {
@@ -26,27 +27,82 @@ bool DccController::connect(const ConnectionSettings &settings)
     {
         Serial.println("Invalid connection settings");
         configured = false;
+        serverConfigured = false;
         status = ConnectionStatus::NotConfigured;
         return false;
     }
 
     serverPort = settings.serverPort;
     configured = true;
-    protocolConnected = false;
-    versionRequested = false;
-    sessionVersionReceived = false;
+    serverConfigured = true;
+    startWifiConnection(settings.wifiSsid, settings.wifiPassword);
+    return true;
+}
+
+bool DccController::connectWifi(const String &ssid, const String &password)
+{
+    if (ssid.isEmpty())
+        return false;
+
+    configured = true;
+    serverConfigured = false;
+    startWifiConnection(ssid, password);
+    return true;
+}
+
+bool DccController::connectServer(const String &address, uint16_t port)
+{
+    if (port == 0 || !serverAddress.fromString(address))
+    {
+        Serial.println("Invalid Command Station address");
+        serverConfigured = false;
+        status = wifiConnected() ? ConnectionStatus::AwaitingServer
+                                 : ConnectionStatus::ConnectingWiFi;
+        return false;
+    }
+
+    configured = true;
+    serverPort = port;
+    serverConfigured = true;
+    resetServerSession();
+    status = wifiConnected() ? ConnectionStatus::ConnectingServer
+                             : ConnectionStatus::ConnectingWiFi;
+    return true;
+}
+
+void DccController::startWifiConnection(const String &ssid, const String &password)
+{
+    resetServerSession();
     wifiWasConnected = false;
-    client.stop();
+    wifiConnectedSinceStart = false;
 
     Serial.println("Starting WiFi...");
     WiFi.mode(WIFI_STA);
     // Prevent station power saving from delaying or dropping the persistent
     // TCP session to the Command Station.
     WiFi.setSleep(false);
-    WiFi.disconnect(false, false);
-    WiFi.begin(settings.wifiSsid.c_str(), settings.wifiPassword.c_str());
+    wifiSsid = ssid;
+    wifiPassword = password;
+    retryWifiConnection();
     status = ConnectionStatus::ConnectingWiFi;
-    return true;
+}
+
+void DccController::retryWifiConnection()
+{
+    lastWifiConnectionAttempt = millis();
+    WiFi.disconnect(false, false);
+    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+}
+
+void DccController::resetServerSession()
+{
+    protocolConnected = false;
+    versionRequested = false;
+    sessionVersionReceived = false;
+    lastConnectionAttempt = 0;
+    lastObservedServerResponseAt = 0;
+    serverRespondedSinceConnection = false;
+    client.stop();
 }
 
 
@@ -67,7 +123,9 @@ void DccController::update()
 
     if (!wifiIsConnected)
     {
-        status = ConnectionStatus::ConnectingWiFi;
+        mdnsStarted = false;
+        status = wifiConnectedSinceStart ? ConnectionStatus::ReconnectingWiFi
+                                         : ConnectionStatus::ConnectingWiFi;
         if (protocolConnected)
         {
             Serial.println("EX-CommandStation connection lost: WiFi unavailable");
@@ -76,6 +134,19 @@ void DccController::update()
             versionRequested = false;
             client.stop();
         }
+        if (millis() - lastWifiConnectionAttempt >= WIFI_RETRY_INTERVAL)
+        {
+            Serial.println("Retrying WiFi connection");
+            retryWifiConnection();
+        }
+        return;
+    }
+
+    wifiConnectedSinceStart = true;
+
+    if (!serverConfigured)
+    {
+        status = ConnectionStatus::AwaitingServer;
         return;
     }
 
@@ -192,6 +263,49 @@ void DccController::update()
             requestListsWithFallback();
         }
     }
+}
+
+bool DccController::discoverCommandStations(std::vector<CommandStationInfo> &stations)
+{
+    stations.clear();
+    if (!wifiConnected())
+        return false;
+
+    if (!mdnsStarted)
+    {
+        if (!MDNS.begin("cabdial"))
+        {
+            Serial.println("Unable to start mDNS discovery");
+            return false;
+        }
+        mdnsStarted = true;
+    }
+
+    const int count = MDNS.queryService("withrottle", "tcp");
+    for (int index = 0; index < count; ++index)
+    {
+        CommandStationInfo station;
+        station.hostname = MDNS.hostname(index);
+        station.address = MDNS.address(index).toString();
+        station.port = MDNS.port(index);
+        if (station.address.isEmpty() || station.port == 0)
+            continue;
+
+        bool alreadyListed = false;
+        for (const CommandStationInfo &knownStation : stations)
+        {
+            if (knownStation.address == station.address && knownStation.port == station.port)
+            {
+                alreadyListed = true;
+                break;
+            }
+        }
+        if (!alreadyListed)
+            stations.push_back(station);
+    }
+    Serial.printf("Found %u DCC-EX Command Station%s via mDNS\n",
+        static_cast<unsigned>(stations.size()), stations.size() == 1 ? "" : "s");
+    return true;
 }
 
 void DccController::receivedServerVersion(int major, int minor, int patch)
@@ -315,6 +429,8 @@ const char *DccController::connectionStatusText() const
     {
     case ConnectionStatus::NotConfigured: return "CONNECTION SETUP REQUIRED";
     case ConnectionStatus::ConnectingWiFi: return "CONNECTING WIFI";
+    case ConnectionStatus::ReconnectingWiFi: return "WIFI RECONNECTING";
+    case ConnectionStatus::AwaitingServer: return "WIFI CONNECTED - SELECT DCC-EX";
     case ConnectionStatus::ConnectingServer: return "CONNECTING DCC-EX";
     case ConnectionStatus::Ready: return "DCC-EX CONNECTED";
     }
@@ -326,7 +442,7 @@ void DccController::setSpeed(
     uint8_t speed,
     bool directionForward)
 {
-    if (!serverReady())
+    if (address < 1 || !serverReady())
     {
         return;
     }
@@ -348,7 +464,7 @@ void DccController::setFunction(
     uint8_t function,
     bool state)
 {
-    if (!serverReady())
+    if (address < 1 || !serverReady())
     {
         return;
     }
@@ -372,7 +488,7 @@ void DccController::setFunction(
 
 void DccController::selectLoco(uint16_t address)
 {
-    if (!serverReady())
+    if (address < 1 || !serverReady())
     {
         return;
     }

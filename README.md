@@ -22,9 +22,13 @@ are examples.
 
 ## Features
 
-- DCC-EX Wi-Fi and TCP connection setup on the touchscreen
+- Touchscreen Wi-Fi network selection and password entry
+- Automatic DCC-EX Command Station discovery through mDNS, with manual
+  address and port entry when discovery finds no suitable station
 - Saved Wi-Fi network, Command Station IP address, and port
 - Connection status displayed on the throttle screen
+- Home-screen DCC controls dimmed and disabled until the Command Station is
+  ready
 - Connection diagnostics for Wi-Fi, DCC-EX TCP, roster, turnout, and route
   loading state, including the age of the most recent DCC-EX reply
 - Independent roster, turnout, and route list retries when a Command Station
@@ -86,20 +90,23 @@ Viewe device is the only implemented hardware target today. See
    pio device monitor -b 115200
    ```
 
-On first startup, the connection screen requires a Wi-Fi SSID, Wi-Fi password,
-Command Station address, and port. DCC-EX normally uses TCP port `2560`.
+On first startup, the connection screen scans for nearby Wi-Fi networks. After
+Wi-Fi connects, it searches for DCC-EX Command Stations through mDNS. You can
+also enter a Command Station address and port manually; DCC-EX normally uses
+TCP port `2560`.
 
 ## First-time setup
 
 1. Power the throttle. The connection screen opens when no saved connection is
    available.
-2. Enter the Wi-Fi network name and password used by the DCC-EX Command
-   Station. The throttle connects as a normal Wi-Fi client.
-3. Enter the Command Station's local IP address and TCP port, normally `2560`,
-   then select **Save**. These details are stored on the throttle for the next
-   startup.
+2. Select the Wi-Fi network used by the DCC-EX Command Station and enter its
+   password. The throttle connects as a normal Wi-Fi client.
+3. Select a discovered Command Station. If none is listed, select **Manual
+   connection** and enter its local IP address and TCP port, normally `2560`.
+   The chosen connection details are stored for the next startup.
 4. Wait for the connection indicator on the throttle screen to show that
-   DCC-EX is connected. If lists do not appear, open the connection screen and
+   DCC-EX is connected. Until then, DCC controls are shown in dark gray and
+   cannot be activated. If lists do not appear, open the connection screen and
    use **Refresh**. **DIAG** shows the individual Wi-Fi, TCP, roster, turnout,
    and route loading states.
 5. Open the cog icon, select **Button Shortcuts**, and choose an action for
@@ -128,10 +135,11 @@ without making a selection.
 | DIAG | Open live Wi-Fi, TCP, roster, turnout, and route diagnostics |
 | Cog icon | Open display settings |
 
-The encoder can browse locomotive, turnout, and route lists. In a list, the
-physical button selects and closes on a single press, or returns without an
-action on a double press. On the home screen, its single-, double-, and
-long-press actions are configured under **Settings → Button Shortcuts**.
+The encoder uses the ESP32-S3 PCNT hardware peripheral and can browse
+locomotive, turnout, and route lists without waiting for DCC/TCP processing.
+In a list, the physical button selects and closes on a single press, or returns
+without an action on a double press. On the home screen, its single-, double-,
+and long-press actions are configured under **Settings → Button Shortcuts**.
 
 ## Limitations and current scope
 
@@ -165,7 +173,9 @@ long-press actions are configured under **Settings → Button Shortcuts**.
 ## Dependencies
 
 The PlatformIO configuration installs LVGL 8.4, DCCEXProtocol, ESP32 Display
-Panel, ESP32 Button, ESP32 Knob, and their required ESP32 support libraries.
+Panel, ESP32 Button, and their required ESP32 support libraries. Rotary
+encoder decoding uses ESP-IDF's built-in PCNT peripheral rather than an
+external encoder library.
 See `platformio.ini` for exact sources.
 
 ## License

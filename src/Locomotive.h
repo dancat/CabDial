@@ -14,7 +14,7 @@ struct LocoFunction
 struct Locomotive
 {
     // Identity
-    uint16_t address = 101;
+    uint16_t address = 0;
     String name;
     bool fromRoster = false;
 

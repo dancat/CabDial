@@ -231,7 +231,7 @@ void ThrottleUI::begin()
     lv_obj_align(speedPreset50Button, LV_ALIGN_TOP_MID, layout.x(-164), layout.y(317));
     lv_obj_set_style_bg_color(speedPreset50Button, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(speedPreset50Button, speedPresetButtonEvent, LV_EVENT_CLICKED, this);
-    lv_obj_t *speedPreset50Label = lv_label_create(speedPreset50Button);
+    speedPreset50Label = lv_label_create(speedPreset50Button);
     lv_label_set_text(speedPreset50Label, "50");
     lv_obj_set_style_text_font(speedPreset50Label, &lv_font_montserrat_24, 0);
     lv_obj_center(speedPreset50Label);
@@ -241,7 +241,7 @@ void ThrottleUI::begin()
     lv_obj_align(speedPreset75Button, LV_ALIGN_TOP_MID, layout.x(-82), layout.y(317));
     lv_obj_set_style_bg_color(speedPreset75Button, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(speedPreset75Button, speedPresetButtonEvent, LV_EVENT_CLICKED, this);
-    lv_obj_t *speedPreset75Label = lv_label_create(speedPreset75Button);
+    speedPreset75Label = lv_label_create(speedPreset75Button);
     lv_label_set_text(speedPreset75Label, "75");
     lv_obj_set_style_text_font(speedPreset75Label, &lv_font_montserrat_24, 0);
     lv_obj_center(speedPreset75Label);
@@ -251,7 +251,7 @@ void ThrottleUI::begin()
     lv_obj_align(stopButton, LV_ALIGN_TOP_MID, 0, layout.y(317));
     lv_obj_set_style_bg_color(stopButton, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(stopButton, stopButtonEvent, LV_EVENT_CLICKED, this);
-    lv_obj_t *stopIcon = lv_obj_create(stopButton);
+    stopIcon = lv_obj_create(stopButton);
     lv_obj_set_size(stopIcon, 24, 24);
     lv_obj_set_style_bg_color(stopIcon, lv_color_hex(0xFF5252), 0);
     lv_obj_set_style_border_width(stopIcon, 0, 0);
@@ -263,7 +263,7 @@ void ThrottleUI::begin()
     lv_obj_align(emergencyStopButton, LV_ALIGN_TOP_MID, layout.x(164), layout.y(317));
     lv_obj_set_style_bg_color(emergencyStopButton, lv_color_hex(0xD32F2F), 0);
     lv_obj_add_event_cb(emergencyStopButton, emergencyStopButtonEvent, LV_EVENT_CLICKED, this);
-    lv_obj_t *emergencyStopLabel = lv_label_create(emergencyStopButton);
+    emergencyStopLabel = lv_label_create(emergencyStopButton);
     lv_label_set_text(emergencyStopLabel, "!");
     lv_obj_set_style_text_font(emergencyStopLabel, &lv_font_montserrat_36, 0);
     lv_obj_center(emergencyStopLabel);
@@ -355,10 +355,10 @@ void ThrottleUI::begin()
     lv_obj_set_style_bg_color(moreFunctionsButton, lv_color_hex(0x263746), LV_PART_MAIN);
     lv_obj_set_style_radius(moreFunctionsButton, 10, LV_PART_MAIN);
     lv_obj_set_style_pad_all(moreFunctionsButton, 0, LV_PART_MAIN);
-    lv_obj_t *moreLabel = lv_label_create(moreFunctionsButton);
-    lv_label_set_text(moreLabel, "F+");
-    lv_obj_set_style_text_font(moreLabel, &lv_font_montserrat_16, 0);
-    lv_obj_center(moreLabel);
+    moreFunctionsLabel = lv_label_create(moreFunctionsButton);
+    lv_label_set_text(moreFunctionsLabel, "F+");
+    lv_obj_set_style_text_font(moreFunctionsLabel, &lv_font_montserrat_16, 0);
+    lv_obj_center(moreFunctionsLabel);
     lv_obj_add_event_cb(moreFunctionsButton, moreFunctionsEvent, LV_EVENT_CLICKED, this);
 
     lv_obj_align(
@@ -547,7 +547,7 @@ void ThrottleUI::begin()
         return button;
     };
 
-    turnoutButton = makeNavigationTile("TURNOUT", 90, turnoutButtonEvent);
+    turnoutButton = makeNavigationTile("TURNOUT", 90, turnoutButtonEvent, &turnoutLabel);
     lv_obj_t *turnoutIcon = lv_label_create(turnoutButton);
     lv_label_set_text(turnoutIcon, "Y");
     lv_obj_set_style_text_font(turnoutIcon, &lv_font_montserrat_24, 0);
@@ -569,7 +569,7 @@ void ThrottleUI::begin()
     lv_obj_set_style_border_width(powerStem, 0, 0);
     lv_obj_align(powerStem, LV_ALIGN_TOP_MID, 0, 1);
 
-    routeButton = makeNavigationTile("ROUTES", 234, routeButtonEvent);
+    routeButton = makeNavigationTile("ROUTES", 234, routeButtonEvent, &routeLabel);
     auto routeNode = [&](int x, int y)
     {
         lv_obj_t *node = lv_obj_create(routeButton);
@@ -593,6 +593,7 @@ void ThrottleUI::begin()
     routeSegment(15, -7, 13);
     routeSegment(15, 7, 13);
 
+    updateControlAvailability(false);
     lvgl_port_unlock();
 }
 
@@ -608,14 +609,17 @@ void ThrottleUI::update(
     // Locomotive address
     // ---------------------------------------------
 
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%u",
-        locomotive.address
-    );
-
-    lv_label_set_text(addressLabel, buffer);
+    if (locomotive.address == 0)
+    {
+        lv_obj_set_style_text_font(addressLabel, &lv_font_montserrat_16, 0);
+        lv_label_set_text(addressLabel, "SELECT");
+    }
+    else
+    {
+        lv_obj_set_style_text_font(addressLabel, &lv_font_montserrat_28, 0);
+        snprintf(buffer, sizeof(buffer), "%u", locomotive.address);
+        lv_label_set_text(addressLabel, buffer);
+    }
 
     // ---------------------------------------------
     // Direction
@@ -627,7 +631,7 @@ void ThrottleUI::update(
 
         lv_obj_set_style_text_color(
             directionArrowLabel,
-            lv_color_hex(0xFFFFFF),
+            lv_color_hex(controlsAvailable ? 0xFFFFFF : 0x46515B),
             0
         );
 
@@ -638,7 +642,7 @@ void ThrottleUI::update(
 
         lv_obj_set_style_text_color(
             directionArrowLabel,
-            lv_color_hex(0xFFFFFF),
+            lv_color_hex(controlsAvailable ? 0xFFFFFF : 0x46515B),
             0
         );
 
@@ -646,46 +650,6 @@ void ThrottleUI::update(
 
     updateFunctionAppearance(locomotive);
 
-    for (uint8_t i = 0; i < FUNCTION_SLOT_COUNT; i++)
-    {
-        FunctionSlot &slot = functionSlots[i];
-
-        if (!slot.assigned)
-        {
-            continue;
-        }
-
-        uint8_t function = slot.function;
-
-        if (locomotive.functionStates[function])
-        {
-            lv_obj_set_style_bg_color(
-                slot.button,
-                lv_color_hex(0xFFD740),
-                LV_PART_MAIN
-            );
-
-            lv_obj_set_style_text_color(
-                slot.label,
-                lv_color_hex(0x101010),
-                0
-            );
-        }
-        else
-        {
-            lv_obj_set_style_bg_color(
-                slot.button,
-                lv_color_hex(0x263746),
-                LV_PART_MAIN
-            );
-
-            lv_obj_set_style_text_color(
-                slot.label,
-                lv_color_hex(0xFFFFFF),
-                0
-            );
-        }
-    }
     
 
     // ---------------------------------------------
@@ -869,6 +833,12 @@ void ThrottleUI::updateFunctionSlots(
         if (pictogram)
         {
             lv_label_set_text(slot.icon, pictogram);
+            // The light glyph used for F0 points the wrong way after the
+            // display's 180-degree hardware orientation. Rotate only it.
+            lv_obj_set_style_transform_pivot_x(slot.icon, 12, 0);
+            lv_obj_set_style_transform_pivot_y(slot.icon, 12, 0);
+            lv_obj_set_style_transform_angle(slot.icon,
+                slot.function == 0 ? 1800 : 0, 0);
             lv_obj_align(slot.icon, LV_ALIGN_TOP_MID, 0, layout.y(6));
             lv_obj_clear_flag(slot.icon, LV_OBJ_FLAG_HIDDEN);
             lv_obj_align(slot.label, LV_ALIGN_BOTTOM_MID, 0, layout.y(-7));
@@ -915,9 +885,18 @@ void ThrottleUI::updateFunctionAppearance(const Locomotive &locomotive)
         if (!slot.assigned)
             continue;
         const bool active = locomotive.functionStates[slot.function];
-        lv_obj_set_style_bg_color(slot.button, active ? lv_color_hex(0xFFD740) : lv_color_hex(0x263746), LV_PART_MAIN);
-        lv_obj_set_style_text_color(slot.label, active ? lv_color_hex(0x101010) : lv_color_hex(0xFFFFFF), 0);
-        lv_obj_set_style_text_color(slot.icon, active ? lv_color_hex(0x101010) : lv_color_hex(0xFFFFFF), 0);
+        if (!controlsAvailable)
+        {
+            lv_obj_set_style_bg_color(slot.button, lv_color_hex(0x151C22), LV_PART_MAIN);
+            lv_obj_set_style_text_color(slot.label, lv_color_hex(0x46515B), 0);
+            lv_obj_set_style_text_color(slot.icon, lv_color_hex(0x46515B), 0);
+        }
+        else
+        {
+            lv_obj_set_style_bg_color(slot.button, active ? lv_color_hex(0xFFD740) : lv_color_hex(0x263746), LV_PART_MAIN);
+            lv_obj_set_style_text_color(slot.label, active ? lv_color_hex(0x101010) : lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_text_color(slot.icon, active ? lv_color_hex(0x101010) : lv_color_hex(0xFFFFFF), 0);
+        }
     }
 }
 
@@ -955,6 +934,51 @@ void ThrottleUI::selectionButtonEvent(lv_event_t *event)
         ui->selectionCallback();
 }
 
+void ThrottleUI::updateControlAvailability(bool available)
+{
+    controlsAvailable = available;
+    const lv_color_t textColor = lv_color_hex(available ? 0xFFFFFF : 0x46515B);
+    const lv_color_t accentColor = lv_color_hex(available ? 0x29B6F6 : 0x46515B);
+
+    lv_obj_set_style_text_color(modeLabel, accentColor, 0);
+    lv_obj_set_style_text_color(valueLabel, textColor, 0);
+    lv_obj_set_style_text_color(rangeLabel, lv_color_hex(available ? 0x8899AA : 0x46515B), 0);
+    lv_obj_set_style_arc_color(speedArc, lv_color_hex(available ? 0x29B6F6 : 0x46515B), LV_PART_INDICATOR);
+
+    lv_obj_set_style_text_color(speedPreset50Label, textColor, 0);
+    lv_obj_set_style_text_color(speedPreset75Label, textColor, 0);
+    lv_obj_set_style_bg_color(stopIcon, lv_color_hex(available ? 0xFF5252 : 0x46515B), 0);
+    lv_obj_set_style_text_color(emergencyStopLabel, textColor, 0);
+    lv_obj_set_style_text_color(directionArrowLabel, textColor, 0);
+    lv_obj_set_style_text_color(moreFunctionsLabel, textColor, 0);
+    lv_obj_set_style_text_color(turnoutLabel, textColor, 0);
+    lv_obj_set_style_text_color(powerLabel, lv_color_hex(available ? 0x8899AA : 0x46515B), 0);
+    lv_obj_set_style_text_color(routeLabel, textColor, 0);
+
+    lv_obj_t *controls[] = {
+        speedPreset50Button, speedPreset75Button, stopButton, directionButton,
+        emergencyStopButton, moreFunctionsButton, turnoutButton, powerButton,
+        routeButton, previousPageButton, nextPageButton
+    };
+    for (lv_obj_t *control : controls)
+    {
+        if (available)
+            lv_obj_clear_state(control, LV_STATE_DISABLED);
+        else
+            lv_obj_add_state(control, LV_STATE_DISABLED);
+    }
+    for (FunctionSlot &slot : functionSlots)
+    {
+        if (available)
+            lv_obj_clear_state(slot.button, LV_STATE_DISABLED);
+        else
+            lv_obj_add_state(slot.button, LV_STATE_DISABLED);
+    }
+
+    if (displayedLocomotive)
+        updateFunctionAppearance(*displayedLocomotive);
+}
+
 void ThrottleUI::setConnectionStatus(const char *text, bool connected)
 {
     lvgl_port_lock(-1);
@@ -966,13 +990,14 @@ void ThrottleUI::setConnectionStatus(const char *text, bool connected)
         lv_color_hex(connected ? 0xE5F7ED : 0x8899AA), 0);
     lv_obj_set_style_text_color(connectionIndicator,
         lv_color_hex(connected ? 0x35E06F : 0x8899AA), 0);
+    updateControlAvailability(connected);
     lvgl_port_unlock();
 }
 
 void ThrottleUI::setTrackPowerStatus(bool known, bool on)
 {
     lvgl_port_lock(-1);
-    const uint32_t color = !known ? 0x8899AA : on ? 0x35E06F : 0xFF7043;
+    const uint32_t color = !controlsAvailable ? 0x46515B : !known ? 0x8899AA : on ? 0x35E06F : 0xFF7043;
     const uint32_t background = !known ? 0x263746 : on ? 0x1B5E3A : 0x8B1E1E;
     lv_obj_set_style_text_color(powerLabel, lv_color_hex(color), 0);
     lv_obj_set_style_bg_color(powerButton, lv_color_hex(background), 0);

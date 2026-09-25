@@ -10,7 +10,6 @@ enum class HomeShortcutAction : uint8_t
 
 struct OperatingPreferences
 {
-    uint16_t lastLocomotiveAddress = 101;
     uint8_t functionPage = 0;
     uint8_t displayBrightness = 100;
     uint16_t displaySleepSeconds = 0;
