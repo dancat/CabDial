@@ -50,84 +50,53 @@ void ThrottleUI::begin()
     );
 
     // -------------------------------------------------
-    // Connection status - top, inside the usable circular area.
+    // Connection and settings - matching navigation tiles inside the usable
+    // circular area at the top of the throttle screen.
     // -------------------------------------------------
 
     connectionButton = lv_btn_create(screen);
-    lv_obj_set_size(connectionButton, layout.width(210), layout.height(34));
-    lv_obj_align(connectionButton, LV_ALIGN_TOP_MID, layout.x(-20), layout.y(32));
-    lv_obj_set_style_bg_opa(connectionButton, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(connectionButton, 0, 0);
-    lv_obj_set_style_shadow_width(connectionButton, 0, 0);
-    lv_obj_set_style_pad_all(connectionButton, 0, 0);
+    lv_obj_set_size(connectionButton, layout.width(88), layout.height(58));
+    lv_obj_align(connectionButton, LV_ALIGN_TOP_MID, layout.x(-50), layout.y(20));
+    lv_obj_set_style_bg_color(connectionButton, lv_color_hex(0x263746), LV_PART_MAIN);
+    lv_obj_set_style_radius(connectionButton, 14, LV_PART_MAIN);
+    lv_obj_set_style_border_color(connectionButton, lv_color_hex(0x3C566B), LV_PART_MAIN);
+    lv_obj_set_style_border_width(connectionButton, 1, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(connectionButton, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(connectionButton, connectionButtonEvent, LV_EVENT_CLICKED, this);
+    connectionIndicator = lv_label_create(connectionButton);
+    lv_label_set_text(connectionIndicator, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_font(connectionIndicator, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(connectionIndicator, lv_color_hex(0x8899AA), 0);
+    lv_obj_align(connectionIndicator, LV_ALIGN_TOP_MID, 0, 3);
+
     navLabel = connectionLabel = lv_label_create(connectionButton);
-    lv_obj_set_width(connectionLabel, layout.width(158));
+    lv_obj_set_width(connectionLabel, layout.width(82));
     lv_label_set_long_mode(connectionLabel, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_align(connectionLabel, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(connectionLabel, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(connectionLabel, &lv_font_montserrat_10, 0);
     lv_obj_set_style_text_color(connectionLabel, lv_color_hex(0x8899AA), 0);
-    lv_label_set_text(connectionLabel, "CONNECTION SETUP REQUIRED");
-    lv_obj_align(connectionLabel, LV_ALIGN_RIGHT_MID, -2, 0);
-
-    // Network pictogram: two endpoints joined by a link.
-    lv_obj_t *networkLink = lv_obj_create(connectionButton);
-    lv_obj_set_size(networkLink, 15, 2);
-    lv_obj_align(networkLink, LV_ALIGN_LEFT_MID, 15, 3);
-    lv_obj_set_style_bg_color(networkLink, lv_color_hex(0x29B6F6), 0);
-    lv_obj_set_style_border_width(networkLink, 0, 0);
-    lv_obj_t *networkLeft = lv_obj_create(connectionButton);
-    lv_obj_set_size(networkLeft, 7, 7);
-    lv_obj_align(networkLeft, LV_ALIGN_LEFT_MID, 9, 3);
-    lv_obj_set_style_bg_color(networkLeft, lv_color_hex(0x29B6F6), 0);
-    lv_obj_set_style_border_width(networkLeft, 0, 0);
-    lv_obj_set_style_radius(networkLeft, LV_RADIUS_CIRCLE, 0);
-    lv_obj_t *networkRight = lv_obj_create(connectionButton);
-    lv_obj_set_size(networkRight, 7, 7);
-    lv_obj_align(networkRight, LV_ALIGN_LEFT_MID, 26, 3);
-    lv_obj_set_style_bg_color(networkRight, lv_color_hex(0x29B6F6), 0);
-    lv_obj_set_style_border_width(networkRight, 0, 0);
-    lv_obj_set_style_radius(networkRight, LV_RADIUS_CIRCLE, 0);
-
-    connectionIndicator = lv_obj_create(connectionButton);
-    lv_obj_set_size(connectionIndicator, 9, 9);
-    lv_obj_align(connectionIndicator, LV_ALIGN_LEFT_MID, 43, 3);
-    lv_obj_set_style_bg_color(connectionIndicator, lv_color_hex(0x667788), 0);
-    lv_obj_set_style_border_width(connectionIndicator, 0, 0);
-    lv_obj_set_style_radius(connectionIndicator, LV_RADIUS_CIRCLE, 0);
+    lv_label_set_text(connectionLabel, "CONNECTION");
+    lv_obj_align(connectionLabel, LV_ALIGN_BOTTOM_MID, 0, -5);
 
     settingsButton = lv_btn_create(screen);
-    lv_obj_set_size(settingsButton, layout.width(42), layout.height(34));
-    lv_obj_align(settingsButton, LV_ALIGN_TOP_MID, layout.x(106), layout.y(32));
-    lv_obj_set_style_bg_opa(settingsButton, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(settingsButton, 0, 0);
-    lv_obj_set_style_shadow_width(settingsButton, 0, 0);
-    lv_obj_set_style_pad_all(settingsButton, 0, 0);
+    lv_obj_set_size(settingsButton, layout.width(88), layout.height(58));
+    lv_obj_align(settingsButton, LV_ALIGN_TOP_MID, layout.x(50), layout.y(20));
+    lv_obj_set_style_bg_color(settingsButton, lv_color_hex(0x263746), LV_PART_MAIN);
+    lv_obj_set_style_radius(settingsButton, 14, LV_PART_MAIN);
+    lv_obj_set_style_border_color(settingsButton, lv_color_hex(0x3C566B), LV_PART_MAIN);
+    lv_obj_set_style_border_width(settingsButton, 1, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(settingsButton, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(settingsButton, settingsButtonEvent, LV_EVENT_CLICKED, this);
-    auto cogPart = [](lv_obj_t *parent, int width, int height, int x, int y)
-    {
-        lv_obj_t *part = lv_obj_create(parent);
-        lv_obj_set_size(part, width, height);
-        lv_obj_align(part, LV_ALIGN_CENTER, x, y);
-        lv_obj_set_style_bg_color(part, lv_color_hex(0xCCD7E0), 0);
-        lv_obj_set_style_border_width(part, 0, 0);
-        lv_obj_set_style_radius(part, 1, 0);
-        return part;
-    };
-    // A compact cogwheel: hub, four teeth, and four diagonal teeth.
-    lv_obj_t *cogHub = cogPart(settingsButton, 13, 13, 0, 0);
-    lv_obj_set_style_radius(cogHub, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_opa(cogHub, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(cogHub, 3, 0);
-    lv_obj_set_style_border_color(cogHub, lv_color_hex(0xCCD7E0), 0);
-    cogPart(settingsButton, 4, 6, 0, -11);
-    cogPart(settingsButton, 4, 6, 0, 11);
-    cogPart(settingsButton, 6, 4, -11, 0);
-    cogPart(settingsButton, 6, 4, 11, 0);
-    cogPart(settingsButton, 4, 4, -8, -8);
-    cogPart(settingsButton, 4, 4, 8, -8);
-    cogPart(settingsButton, 4, 4, -8, 8);
-    cogPart(settingsButton, 4, 4, 8, 8);
+    lv_obj_t *settingsIcon = lv_label_create(settingsButton);
+    lv_label_set_text(settingsIcon, LV_SYMBOL_SETTINGS);
+    lv_obj_set_style_text_font(settingsIcon, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(settingsIcon, lv_color_hex(0xCCD7E0), 0);
+    lv_obj_align(settingsIcon, LV_ALIGN_TOP_MID, 0, 3);
+    lv_obj_t *settingsLabel = lv_label_create(settingsButton);
+    lv_label_set_text(settingsLabel, "SETTINGS");
+    lv_obj_set_style_text_font(settingsLabel, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_color(settingsLabel, lv_color_hex(0xCCD7E0), 0);
+    lv_obj_align(settingsLabel, LV_ALIGN_BOTTOM_MID, 0, -5);
 
     // Mode inside the speed arc, below the main value.
     modeLabel = lv_label_create(screen);
@@ -150,7 +119,7 @@ void ThrottleUI::begin()
         modeLabel,
         LV_ALIGN_CENTER,
         0,
-        25
+        -5
     );
 
     // -------------------------------------------------
@@ -163,8 +132,8 @@ void ThrottleUI::begin()
 
     speedArc = lv_arc_create(screen);
 
-    lv_obj_set_size(speedArc, layout.width(245), layout.height(245));
-    lv_obj_align(speedArc, LV_ALIGN_CENTER, 0, layout.y(-10));
+    lv_obj_set_size(speedArc, layout.width(220), layout.height(220));
+    lv_obj_align(speedArc, LV_ALIGN_CENTER, 0, layout.y(-40));
 
     // Speed range
     lv_arc_set_range(speedArc, 0, 126);
@@ -229,7 +198,7 @@ void ThrottleUI::begin()
         valueLabel,
         LV_ALIGN_CENTER,
         0,
-        -25
+        -55
     );
 
     // Speed range
@@ -253,50 +222,50 @@ void ThrottleUI::begin()
         rangeLabel,
         LV_ALIGN_CENTER,
         0,
-        25
+        -5
     );
     lv_obj_add_flag(rangeLabel, LV_OBJ_FLAG_HIDDEN);
 
     speedPreset50Button = lv_btn_create(screen);
-    lv_obj_set_size(speedPreset50Button, layout.width(52), layout.height(42));
-    lv_obj_align(speedPreset50Button, LV_ALIGN_TOP_MID, layout.x(-128), layout.y(330));
+    lv_obj_set_size(speedPreset50Button, layout.width(78), layout.height(63));
+    lv_obj_align(speedPreset50Button, LV_ALIGN_TOP_MID, layout.x(-164), layout.y(317));
     lv_obj_set_style_bg_color(speedPreset50Button, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(speedPreset50Button, speedPresetButtonEvent, LV_EVENT_CLICKED, this);
     lv_obj_t *speedPreset50Label = lv_label_create(speedPreset50Button);
     lv_label_set_text(speedPreset50Label, "50");
-    lv_obj_set_style_text_font(speedPreset50Label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(speedPreset50Label, &lv_font_montserrat_24, 0);
     lv_obj_center(speedPreset50Label);
 
     speedPreset75Button = lv_btn_create(screen);
-    lv_obj_set_size(speedPreset75Button, layout.width(52), layout.height(42));
-    lv_obj_align(speedPreset75Button, LV_ALIGN_TOP_MID, layout.x(-64), layout.y(330));
+    lv_obj_set_size(speedPreset75Button, layout.width(78), layout.height(63));
+    lv_obj_align(speedPreset75Button, LV_ALIGN_TOP_MID, layout.x(-82), layout.y(317));
     lv_obj_set_style_bg_color(speedPreset75Button, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(speedPreset75Button, speedPresetButtonEvent, LV_EVENT_CLICKED, this);
     lv_obj_t *speedPreset75Label = lv_label_create(speedPreset75Button);
     lv_label_set_text(speedPreset75Label, "75");
-    lv_obj_set_style_text_font(speedPreset75Label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(speedPreset75Label, &lv_font_montserrat_24, 0);
     lv_obj_center(speedPreset75Label);
 
     stopButton = lv_btn_create(screen);
-    lv_obj_set_size(stopButton, layout.width(52), layout.height(42));
-    lv_obj_align(stopButton, LV_ALIGN_TOP_MID, 0, layout.y(330));
+    lv_obj_set_size(stopButton, layout.width(78), layout.height(63));
+    lv_obj_align(stopButton, LV_ALIGN_TOP_MID, 0, layout.y(317));
     lv_obj_set_style_bg_color(stopButton, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(stopButton, stopButtonEvent, LV_EVENT_CLICKED, this);
     lv_obj_t *stopIcon = lv_obj_create(stopButton);
-    lv_obj_set_size(stopIcon, 16, 16);
+    lv_obj_set_size(stopIcon, 24, 24);
     lv_obj_set_style_bg_color(stopIcon, lv_color_hex(0xFF5252), 0);
     lv_obj_set_style_border_width(stopIcon, 0, 0);
     lv_obj_set_style_radius(stopIcon, 2, 0);
     lv_obj_center(stopIcon);
 
     emergencyStopButton = lv_btn_create(screen);
-    lv_obj_set_size(emergencyStopButton, layout.width(52), layout.height(42));
-    lv_obj_align(emergencyStopButton, LV_ALIGN_TOP_MID, layout.x(128), layout.y(330));
+    lv_obj_set_size(emergencyStopButton, layout.width(78), layout.height(63));
+    lv_obj_align(emergencyStopButton, LV_ALIGN_TOP_MID, layout.x(164), layout.y(317));
     lv_obj_set_style_bg_color(emergencyStopButton, lv_color_hex(0xD32F2F), 0);
     lv_obj_add_event_cb(emergencyStopButton, emergencyStopButtonEvent, LV_EVENT_CLICKED, this);
     lv_obj_t *emergencyStopLabel = lv_label_create(emergencyStopButton);
     lv_label_set_text(emergencyStopLabel, "!");
-    lv_obj_set_style_text_font(emergencyStopLabel, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(emergencyStopLabel, &lv_font_montserrat_36, 0);
     lv_obj_center(emergencyStopLabel);
 
     // -------------------------------------------------
@@ -307,7 +276,7 @@ void ThrottleUI::begin()
     // Keep the locomotive summary tall enough for its icon, address, and
     // roster name, matching the vertical card used by the round layout.
     lv_obj_set_size(selectionButton, layout.width(106), layout.height(196));
-    lv_obj_align(selectionButton, LV_ALIGN_LEFT_MID, layout.x(-5), layout.y(-10));
+    lv_obj_align(selectionButton, LV_ALIGN_LEFT_MID, layout.x(4), layout.y(-52));
     lv_obj_set_style_bg_color(selectionButton, lv_color_hex(0x101820), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(selectionButton, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_color(selectionButton, lv_color_hex(0x263746), LV_PART_MAIN);
@@ -331,6 +300,9 @@ void ThrottleUI::begin()
     );
 
     lv_label_set_text(addressTitleLabel, "LOCO");
+    lv_obj_set_width(addressTitleLabel, layout.width(96));
+    lv_label_set_long_mode(addressTitleLabel, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_align(addressTitleLabel, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_align(
         addressTitleLabel,
@@ -377,14 +349,17 @@ void ThrottleUI::begin()
 
     lv_label_set_text(addressLabel, "101");
 
-    nameLabel = lv_label_create(selectionButton);
-    lv_obj_set_width(nameLabel, layout.width(96));
-    lv_label_set_long_mode(nameLabel, LV_LABEL_LONG_DOT);
-    lv_obj_set_style_text_align(nameLabel, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(nameLabel, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(nameLabel, lv_color_hex(0x8899AA), 0);
-    lv_label_set_text(nameLabel, "");
-    lv_obj_align(nameLabel, LV_ALIGN_BOTTOM_MID, 0, -16);
+    moreFunctionsButton = lv_btn_create(selectionButton);
+    lv_obj_set_size(moreFunctionsButton, layout.width(86), layout.height(28));
+    lv_obj_align(moreFunctionsButton, LV_ALIGN_BOTTOM_MID, 0, -layout.y(10));
+    lv_obj_set_style_bg_color(moreFunctionsButton, lv_color_hex(0x263746), LV_PART_MAIN);
+    lv_obj_set_style_radius(moreFunctionsButton, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(moreFunctionsButton, 0, LV_PART_MAIN);
+    lv_obj_t *moreLabel = lv_label_create(moreFunctionsButton);
+    lv_label_set_text(moreLabel, "F+");
+    lv_obj_set_style_text_font(moreLabel, &lv_font_montserrat_16, 0);
+    lv_obj_center(moreLabel);
+    lv_obj_add_event_cb(moreFunctionsButton, moreFunctionsEvent, LV_EVENT_CLICKED, this);
 
     lv_obj_align(
         addressLabel,
@@ -407,8 +382,8 @@ void ThrottleUI::begin()
     // -------------------------------------------------
 
     directionButton = lv_btn_create(screen);
-    lv_obj_set_size(directionButton, layout.width(52), layout.height(42));
-    lv_obj_align(directionButton, LV_ALIGN_TOP_MID, layout.x(64), layout.y(330));
+    lv_obj_set_size(directionButton, layout.width(78), layout.height(63));
+    lv_obj_align(directionButton, LV_ALIGN_TOP_MID, layout.x(82), layout.y(317));
     lv_obj_set_style_bg_color(directionButton, lv_color_hex(0x263746), 0);
     lv_obj_add_event_cb(directionButton, directionButtonEvent, LV_EVENT_CLICKED, this);
 
@@ -416,7 +391,7 @@ void ThrottleUI::begin()
 
     lv_obj_set_style_text_font(
         directionArrowLabel,
-        &lv_font_montserrat_22,
+        &lv_font_montserrat_32,
         0
     );
 
@@ -460,7 +435,7 @@ void ThrottleUI::begin()
             slot.button,
             LV_ALIGN_TOP_MID,
             layout.x(functionX[i]),
-            layout.y(386)
+            layout.y(394)
         );
 
         lv_obj_set_style_radius(
@@ -550,20 +525,12 @@ void ThrottleUI::begin()
     lv_obj_add_flag(previousPageButton, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(nextPageButton, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(pageLabel, LV_OBJ_FLAG_HIDDEN);
-    moreFunctionsButton = lv_btn_create(screen);
-    lv_obj_set_size(moreFunctionsButton, layout.width(86), layout.height(28));
-    lv_obj_align(moreFunctionsButton, LV_ALIGN_BOTTOM_MID, 0, -layout.y(10));
-    lv_obj_set_style_bg_color(moreFunctionsButton, lv_color_hex(0x263746), 0);
-    lv_obj_t *moreLabel = lv_label_create(moreFunctionsButton);
-    lv_label_set_text(moreLabel, "F+"); lv_obj_center(moreLabel);
-    lv_obj_add_event_cb(moreFunctionsButton, moreFunctionsEvent, LV_EVENT_CLICKED, this);
-    
     auto makeNavigationTile = [&](const char *text, int y, lv_event_cb_t callback,
                                   lv_obj_t **labelOut = nullptr)
     {
         lv_obj_t *button = lv_btn_create(screen);
         lv_obj_set_size(button, layout.width(82), layout.height(56));
-        lv_obj_align(button, LV_ALIGN_TOP_RIGHT, layout.x(-20), layout.y(y));
+        lv_obj_align(button, LV_ALIGN_TOP_RIGHT, layout.x(-28), layout.y(y));
         lv_obj_set_style_bg_color(button, lv_color_hex(0x263746), LV_PART_MAIN);
         lv_obj_set_style_radius(button, 14, LV_PART_MAIN);
         lv_obj_set_style_border_color(button, lv_color_hex(0x3C566B), LV_PART_MAIN);
@@ -580,14 +547,14 @@ void ThrottleUI::begin()
         return button;
     };
 
-    turnoutButton = makeNavigationTile("TURNOUT", 126, turnoutButtonEvent);
+    turnoutButton = makeNavigationTile("TURNOUT", 90, turnoutButtonEvent);
     lv_obj_t *turnoutIcon = lv_label_create(turnoutButton);
     lv_label_set_text(turnoutIcon, "Y");
     lv_obj_set_style_text_font(turnoutIcon, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(turnoutIcon, lv_color_hex(0xCCD7E0), 0);
     lv_obj_align(turnoutIcon, LV_ALIGN_TOP_MID, 0, 3);
 
-    powerButton = makeNavigationTile("POWER", 198, powerButtonEvent, &powerLabel);
+    powerButton = makeNavigationTile("POWER", 162, powerButtonEvent, &powerLabel);
     lv_obj_set_style_text_color(powerLabel, lv_color_hex(0x8899AA), 0);
     lv_obj_t *powerRing = lv_obj_create(powerButton);
     lv_obj_set_size(powerRing, 20, 20);
@@ -602,7 +569,7 @@ void ThrottleUI::begin()
     lv_obj_set_style_border_width(powerStem, 0, 0);
     lv_obj_align(powerStem, LV_ALIGN_TOP_MID, 0, 1);
 
-    routeButton = makeNavigationTile("ROUTES", 270, routeButtonEvent);
+    routeButton = makeNavigationTile("ROUTES", 234, routeButtonEvent);
     auto routeNode = [&](int x, int y)
     {
         lv_obj_t *node = lv_obj_create(routeButton);
@@ -921,7 +888,10 @@ void ThrottleUI::setLocomotive(
     lvgl_port_lock(-1);
 
     updateFunctionSlots(locomotive);
-    lv_label_set_text(nameLabel, locomotive.name.c_str());
+    const bool hasRosterName = locomotive.fromRoster && !locomotive.name.isEmpty();
+    lv_label_set_text(addressTitleLabel, hasRosterName ? locomotive.name.c_str() : "LOCO");
+    lv_obj_set_style_text_color(addressTitleLabel,
+        lv_color_hex(hasRosterName ? 0xE5F7ED : 0x8899AA), 0);
     updateFunctionAppearance(locomotive);
 
     lvgl_port_unlock();
@@ -988,11 +958,14 @@ void ThrottleUI::selectionButtonEvent(lv_event_t *event)
 void ThrottleUI::setConnectionStatus(const char *text, bool connected)
 {
     lvgl_port_lock(-1);
-    lv_label_set_text(connectionLabel, text);
+    const char *compactStatus = connected ? "ONLINE" :
+        (strstr(text, "SETUP") ? "SETUP" :
+         (strstr(text, "WIFI") ? "WI-FI" : "CONNECTING"));
+    lv_label_set_text(connectionLabel, compactStatus);
     lv_obj_set_style_text_color(connectionLabel,
         lv_color_hex(connected ? 0xE5F7ED : 0x8899AA), 0);
-    lv_obj_set_style_bg_color(connectionIndicator,
-        lv_color_hex(connected ? 0x35E06F : 0x667788), 0);
+    lv_obj_set_style_text_color(connectionIndicator,
+        lv_color_hex(connected ? 0x35E06F : 0x8899AA), 0);
     lvgl_port_unlock();
 }
 

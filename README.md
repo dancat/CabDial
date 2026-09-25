@@ -17,8 +17,8 @@ are entered on the device and stored in ESP32 Preferences.
   <img src="docs/screenshots/turnout-control.png" alt="CabDial turnout control screen" width="30%">
 </p>
 
-Illustrations show the intended round-screen interface. Locomotive and turnout
-names are examples.
+Illustrations show the round-screen interface. Locomotive and turnout names
+are examples.
 
 ## Features
 
@@ -26,7 +26,9 @@ names are examples.
 - Saved Wi-Fi network, Command Station IP address, and port
 - Connection status displayed on the throttle screen
 - Connection diagnostics for Wi-Fi, DCC-EX TCP, roster, turnout, and route
-  loading state
+  loading state, including the age of the most recent DCC-EX reply
+- Independent roster, turnout, and route list retries when a Command Station
+  accepts TCP but leaves the normal ordered list load unanswered
 - Speed control with the on-screen arc and rotary encoder
 - 50 and 75 speed presets, selected-locomotive stop, direction, and global
   emergency-stop controls
@@ -34,7 +36,8 @@ names are examples.
 - Manual locomotive address entry for locomotives outside the roster
 - Roster names and function definitions, including momentary functions
 - Three large F0–F2 shortcut cards with text and recognised function
-  pictograms, plus an F+ screen for additional functions through F31
+  pictograms, plus an F+ action in the locomotive card for additional
+  functions through F31
 - Per-locomotive function state retained while the throttle remains powered
 - Synchronization of the selected locomotive's speed, direction, and function
   broadcasts from other throttles
@@ -112,16 +115,16 @@ without making a selection.
 | Control | Action |
 | --- | --- |
 | Speed arc / encoder | Change selected locomotive speed |
-| `LOCO` panel | Open roster and manual-address selection |
+| Locomotive card | Open roster and manual-address selection; displays the roster name when available |
 | Function cards | Toggle latching functions or hold momentary functions |
-| F+ | Open all available roster functions, or F0–F31 for a manual locomotive |
+| F+ in the locomotive card | Open all available roster functions, or F0–F31 for a manual locomotive |
 | Direction control | Stop and change direction |
 | Stop | Stop the selected locomotive |
 | `!` | Send a global DCC-EX emergency stop |
 | TURNOUT | Open turnout control |
 | POWER | Open track-power control |
 | ROUTES | Open route control |
-| Network icon | Open connection settings |
+| Wi-Fi status tile | Open connection settings; shows setup, Wi-Fi, connecting, or online state |
 | DIAG | Open live Wi-Fi, TCP, roster, turnout, and route diagnostics |
 | Cog icon | Open display settings |
 
@@ -142,9 +145,10 @@ long-press actions are configured under **Settings → Button Shortcuts**.
 - The app requires a DCC-EX Command Station that exposes its TCP protocol and
   supports the requested roster, turnout, route, and power commands.
 - Some Command Station/network combinations may not answer the version request
-  even though their TCP connection is usable. The throttle now continues with
-  list loading instead of reconnecting continuously, but firmware and network
-  compatibility should be checked on the target layout.
+  or object-list queries even though their TCP connection is usable. The
+  throttle continues without a version reply and independently retries the
+  roster, turnout, and route requests, but firmware and network compatibility
+  should be checked on the target layout.
 - This project has no automated hardware-in-the-loop test suite. On-device
   testing is required after changes to networking, input, or display code.
 

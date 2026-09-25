@@ -61,7 +61,6 @@ private:
     // Locomotive
     lv_obj_t *addressTitleLabel = nullptr;
     lv_obj_t *addressLabel = nullptr;
-    lv_obj_t *nameLabel = nullptr;
     lv_obj_t *connectionButton = nullptr;
     lv_obj_t *connectionLabel = nullptr;
     lv_obj_t *connectionIndicator = nullptr;

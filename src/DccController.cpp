@@ -133,6 +133,9 @@ void DccController::update()
             sessionVersionReceived = false;
             connectionStartedAt = millis();
             lastVersionRequestAt = 0;
+            lastObservedServerResponseAt = connectionStartedAt;
+            serverRespondedSinceConnection = false;
+            resetListLoadRetries();
         }
         else
         {
@@ -150,6 +153,12 @@ void DccController::update()
     if (protocolConnected)
     {
         protocol.check();
+        const unsigned long lastResponseAt = protocol.getLastServerResponseTime();
+        if (lastResponseAt != lastObservedServerResponseAt)
+        {
+            lastObservedServerResponseAt = lastResponseAt;
+            serverRespondedSinceConnection = true;
+        }
 
         if (!sessionVersionReceived)
         {
@@ -180,7 +189,7 @@ void DccController::update()
             // each response. Keep calling it until all requested lists arrive.
             // This belongs to the connection lifecycle, rather than depending
             // on a particular UI screen or main-loop consumer.
-            protocol.getLists(true, true, true, false);
+            requestListsWithFallback();
         }
     }
 }
@@ -237,6 +246,62 @@ bool DccController::serverReady()
 {
     // The library's receivedVersion flag survives reconnects; this flag does not.
     return connected() && sessionVersionReceived;
+}
+
+bool DccController::serverResponded()
+{
+    return connected() && serverRespondedSinceConnection;
+}
+
+unsigned long DccController::lastServerResponseAgeMs()
+{
+    if (!connected() || !serverRespondedSinceConnection)
+        return 0;
+    return millis() - lastObservedServerResponseAt;
+}
+
+void DccController::resetListLoadRetries()
+{
+    listLoadingStartedAt = millis();
+    lastRosterFallbackAt = 0;
+    lastTurnoutFallbackAt = 0;
+    lastRouteFallbackAt = 0;
+}
+
+void DccController::requestListsWithFallback()
+{
+    protocol.getLists(true, true, true, false);
+
+    const unsigned long now = millis();
+    if (now - listLoadingStartedAt < LIST_FALLBACK_DELAY)
+        return;
+
+    // DCCEXProtocol deliberately waits for a roster response before it sends
+    // turnouts and routes. Retry the roster and request the other lists
+    // independently when a Command Station leaves that first request pending.
+    if (!protocol.receivedRoster() &&
+        (lastRosterFallbackAt == 0 || now - lastRosterFallbackAt >= LIST_FALLBACK_RETRY_INTERVAL))
+    {
+        protocol.sendCommand("JR");
+        lastRosterFallbackAt = now;
+        Serial.println("Retrying DCC-EX roster request (<JR>)");
+    }
+
+    if (!protocol.receivedTurnoutList() &&
+        (lastTurnoutFallbackAt == 0 || now - lastTurnoutFallbackAt >= LIST_FALLBACK_RETRY_INTERVAL))
+    {
+        protocol.sendCommand("JT");
+        lastTurnoutFallbackAt = now;
+        Serial.println("Requesting DCC-EX turnout list independently (<JT>)");
+    }
+
+    if (!protocol.receivedRouteList() &&
+        (lastRouteFallbackAt == 0 || now - lastRouteFallbackAt >= LIST_FALLBACK_RETRY_INTERVAL))
+    {
+        protocol.sendCommand("JA");
+        lastRouteFallbackAt = now;
+        Serial.println("Requesting DCC-EX route list independently (<JA>)");
+    }
 }
 
 DccController::ConnectionStatus DccController::connectionStatus() const
@@ -373,6 +438,7 @@ void DccController::refreshRoster()
 
     Serial.println("Refreshing DCC-EX roster");
     protocol.refreshRoster();
+    resetListLoadRetries();
     protocol.getLists(true, false, false, false);
     Serial.println("Requested DCC-EX roster (<JR>)");
 }
@@ -387,6 +453,7 @@ void DccController::refreshTurnouts()
 
     Serial.println("Refreshing DCC-EX turnout list");
     protocol.refreshTurnoutList();
+    resetListLoadRetries();
     if (protocol.receivedRoster())
     {
         protocol.getLists(false, true, false, false);
@@ -409,6 +476,7 @@ void DccController::refreshLists()
     protocol.refreshRoster();
     protocol.refreshTurnoutList();
     protocol.refreshRouteList();
+    resetListLoadRetries();
 }
 
 void DccController::requestRoster()

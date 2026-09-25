@@ -88,15 +88,20 @@ void SettingsUI::begin(BrightnessCallback brightness, SleepCallback sleep, BackC
     lv_obj_t *shortcutTitle = lv_label_create(shortcutScreen);
     lv_label_set_text(shortcutTitle, "BUTTON SHORTCUTS");
     lv_obj_set_style_text_font(shortcutTitle, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(shortcutTitle, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(shortcutTitle, LV_ALIGN_TOP_MID, 0, layout.y(32));
     const char *pressNames[] = {"Single press", "Double press", "Long press"};
     for (uint8_t index = 0; index < 3; ++index) {
         lv_obj_t *label = lv_label_create(shortcutScreen);
         lv_label_set_text(label, pressNames[index]);
+        lv_obj_set_style_text_color(label, lv_color_hex(0xCCD7E0), 0);
         lv_obj_align(label, LV_ALIGN_TOP_LEFT, layout.x(62), layout.y(94 + index * 82));
         shortcutSelectors[index] = lv_dropdown_create(shortcutScreen);
         lv_dropdown_set_options(shortcutSelectors[index], "F0\nF1\nF2\nStop\nChange direction\nEmergency stop");
         lv_obj_set_width(shortcutSelectors[index], layout.width(300));
+        lv_obj_set_style_bg_color(shortcutSelectors[index], lv_color_hex(0x266A91), LV_PART_MAIN);
+        lv_obj_set_style_text_color(shortcutSelectors[index], lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+        lv_obj_set_style_text_color(shortcutSelectors[index], lv_color_hex(0xFFFFFF), LV_PART_SELECTED);
         lv_obj_align(shortcutSelectors[index], LV_ALIGN_TOP_MID, 0, layout.y(118 + index * 82));
         lv_obj_add_event_cb(shortcutSelectors[index], shortcutEvent, LV_EVENT_VALUE_CHANGED, this);
     }
@@ -105,6 +110,7 @@ void SettingsUI::begin(BrightnessCallback brightness, SleepCallback sleep, BackC
     lv_obj_align(shortcutBack, LV_ALIGN_BOTTOM_MID, 0, -layout.y(22));
     lv_obj_t *shortcutBackLabel = lv_label_create(shortcutBack);
     lv_label_set_text(shortcutBackLabel, "Back");
+    lv_obj_set_style_text_color(shortcutBackLabel, lv_color_hex(0xF2F6FA), 0);
     lv_obj_center(shortcutBackLabel);
     lv_obj_add_event_cb(shortcutBack, backEvent, LV_EVENT_CLICKED, this);
     lvgl_port_unlock();

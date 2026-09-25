@@ -33,6 +33,8 @@ public:
     bool wifiConnected();
     bool connected();
     bool serverReady();
+    bool serverResponded();
+    unsigned long lastServerResponseAgeMs();
     ConnectionStatus connectionStatus() const;
     const char *connectionStatusText() const;
 
@@ -66,6 +68,8 @@ private:
         int functionMap) override;
     void receivedTurnoutAction(int turnoutId, bool thrown) override;
     void receivedTrackPower(TrackPower state) override;
+    void resetListLoadRetries();
+    void requestListsWithFallback();
 
     WiFiClient client;
     DCCEXProtocol protocol;
@@ -88,7 +92,15 @@ private:
     unsigned long lastConnectionAttempt = 0;
     unsigned long connectionStartedAt = 0;
     unsigned long lastVersionRequestAt = 0;
+    unsigned long listLoadingStartedAt = 0;
+    unsigned long lastRosterFallbackAt = 0;
+    unsigned long lastTurnoutFallbackAt = 0;
+    unsigned long lastRouteFallbackAt = 0;
+    unsigned long lastObservedServerResponseAt = 0;
+    bool serverRespondedSinceConnection = false;
     static constexpr unsigned long CONNECTION_RETRY_INTERVAL = 5000;
     static constexpr unsigned long VERSION_REQUEST_INTERVAL = 5000;
     static constexpr unsigned long VERSION_HANDSHAKE_TIMEOUT = 15000;
+    static constexpr unsigned long LIST_FALLBACK_DELAY = 8000;
+    static constexpr unsigned long LIST_FALLBACK_RETRY_INTERVAL = 10000;
 };

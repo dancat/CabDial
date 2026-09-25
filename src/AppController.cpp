@@ -934,7 +934,8 @@ void updateApplication()
     lvgl_port_lock(-1);
     dcc.update();
     if (diagnosticsUI.isVisible())
-        diagnosticsUI.update(dcc.wifiConnected(), dcc.connected(), dcc.rosterReady(), dcc.turnoutsReady(), dcc.routesReady());
+        diagnosticsUI.update(dcc.wifiConnected(), dcc.connected(), dcc.serverResponded(),
+            dcc.lastServerResponseAgeMs(), dcc.rosterReady(), dcc.turnoutsReady(), dcc.routesReady());
     throttleUI.setConnectionStatus(
         dcc.connectionStatusText(),
         dcc.connectionStatus() == DccController::ConnectionStatus::Ready
