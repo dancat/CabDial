@@ -2,9 +2,38 @@
 #include "lvgl_v8_port.h"
 #include "UiLayout.h"
 #include <WiFi.h>
+#include <cstring>
 
 namespace
 {
+const char *numericKeyboardMap[] = {
+    "1", "2", "3", "\n",
+    "4", "5", "6", "\n",
+    "7", "8", "9", "\n",
+    LV_SYMBOL_BACKSPACE, "0", LV_SYMBOL_OK, ""
+};
+
+const lv_btnmatrix_ctrl_t numericKeyboardControlMap[] = {
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    2, 1, 2
+};
+
+const char *ipAddressKeyboardMap[] = {
+    "1", "2", "3", "\n",
+    "4", "5", "6", "\n",
+    "7", "8", "9", "\n",
+    LV_SYMBOL_BACKSPACE, "0", ".", LV_SYMBOL_OK, ""
+};
+
+const lv_btnmatrix_ctrl_t ipAddressKeyboardControlMap[] = {
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    2, 1, 1, 2
+};
+
 lv_obj_t *makeField(lv_obj_t *parent, const UiLayout &layout, const char *title, int y,
     lv_obj_t **labelOut)
 {
@@ -60,7 +89,8 @@ lv_obj_t *makeWideButton(lv_obj_t *parent, const UiLayout &layout, const char *t
 
 void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback refresh,
     DiagnosticsCallback diagnostics, WifiConnectCallback wifiConnect,
-    DiscoverCallback discover, ServerConnectCallback serverConnect)
+    DiscoverCallback discover, ServerConnectCallback serverConnect,
+    DisconnectCallback disconnect)
 {
     lvgl_port_lock(-1);
     saveCallback = save;
@@ -70,6 +100,7 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     wifiConnectCallback = wifiConnect;
     discoverCallback = discover;
     serverConnectCallback = serverConnect;
+    disconnectCallback = disconnect;
     screen = lv_obj_create(nullptr);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x080C10), 0);
@@ -120,6 +151,7 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_roller_set_visible_row_count(networkRoller, 5);
     lv_obj_align(networkRoller, LV_ALIGN_CENTER, 0, layout.y(-5));
     lv_obj_add_event_cb(networkRoller, networkRollerEvent, LV_EVENT_VALUE_CHANGED, this);
+    lv_obj_add_event_cb(networkRoller, networkSelectEvent, LV_EVENT_SHORT_CLICKED, this);
 
     networkSelectedLabel = lv_label_create(networkPicker);
     lv_obj_set_width(networkSelectedLabel, layout.width(320));
@@ -145,6 +177,53 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_set_style_bg_opa(serverPicker, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(serverPicker, 0, 0);
     lv_obj_set_style_pad_all(serverPicker, 0, 0);
+
+    connectedDetails = lv_obj_create(screen);
+    lv_obj_set_size(connectedDetails, profile.width, profile.height);
+    lv_obj_center(connectedDetails);
+    lv_obj_clear_flag(connectedDetails, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(connectedDetails, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(connectedDetails, 0, 0);
+    lv_obj_set_style_pad_all(connectedDetails, 0, 0);
+
+    lv_obj_t *detailsTitle = lv_label_create(connectedDetails);
+    lv_label_set_text(detailsTitle, "CONNECTION");
+    lv_obj_set_style_text_font(detailsTitle, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(detailsTitle, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(detailsTitle, LV_ALIGN_TOP_MID, 0, layout.y(40));
+
+    lv_obj_t *detailsNetworkTitle = lv_label_create(connectedDetails);
+    lv_label_set_text(detailsNetworkTitle, "WI-FI NETWORK");
+    lv_obj_set_style_text_font(detailsNetworkTitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(detailsNetworkTitle, lv_color_hex(0x8899AA), 0);
+    lv_obj_align(detailsNetworkTitle, LV_ALIGN_TOP_MID, 0, layout.y(112));
+    connectedNetworkValue = lv_label_create(connectedDetails);
+    lv_obj_set_width(connectedNetworkValue, layout.width(360));
+    lv_label_set_long_mode(connectedNetworkValue, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_style_text_align(connectedNetworkValue, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(connectedNetworkValue, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(connectedNetworkValue, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(connectedNetworkValue, LV_ALIGN_TOP_MID, 0, layout.y(140));
+
+    lv_obj_t *serverDetailsTitle = lv_label_create(connectedDetails);
+    lv_label_set_text(serverDetailsTitle, "DCC-EX COMMAND STATION");
+    lv_obj_set_style_text_font(serverDetailsTitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(serverDetailsTitle, lv_color_hex(0x8899AA), 0);
+    lv_obj_align(serverDetailsTitle, LV_ALIGN_TOP_MID, 0, layout.y(210));
+    connectedServerValue = lv_label_create(connectedDetails);
+    lv_obj_set_width(connectedServerValue, layout.width(360));
+    lv_label_set_long_mode(connectedServerValue, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_style_text_align(connectedServerValue, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(connectedServerValue, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(connectedServerValue, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(connectedServerValue, LV_ALIGN_TOP_MID, 0, layout.y(238));
+
+    makeWideButton(connectedDetails, layout, "Back", 118, 42, -70, 348,
+        detailsBackEvent, this);
+    lv_obj_t *disconnectButton = makeWideButton(connectedDetails, layout, "Disconnect", 118, 42, 70, 348,
+        disconnectEvent, this);
+    lv_obj_set_style_bg_color(disconnectButton, lv_color_hex(0x8B2D2D), 0);
+    lv_obj_add_flag(connectedDetails, LV_OBJ_FLAG_HIDDEN);
 
     lv_obj_t *serverTitle = lv_label_create(serverPicker);
     lv_label_set_text(serverTitle, "DCC-EX STATIONS");
@@ -173,6 +252,7 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_roller_set_visible_row_count(serverRoller, 5);
     lv_obj_align(serverRoller, LV_ALIGN_CENTER, 0, layout.y(-5));
     lv_obj_add_event_cb(serverRoller, serverRollerEvent, LV_EVENT_VALUE_CHANGED, this);
+    lv_obj_add_event_cb(serverRoller, serverSelectEvent, LV_EVENT_SHORT_CLICKED, this);
 
     serverSelectedLabel = lv_label_create(serverPicker);
     lv_obj_set_width(serverSelectedLabel, layout.width(320));
@@ -241,9 +321,9 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_add_flag(editorField, LV_OBJ_FLAG_HIDDEN);
 
     keyboard = lv_keyboard_create(screen);
-    // Keep the keyboard inside the usable area of the round 480 px display.
-    lv_obj_set_size(keyboard, layout.width(360), layout.height(170));
-    lv_obj_align(keyboard, LV_ALIGN_CENTER, 0, layout.y(50));
+    // Use the full lower area of the round display, directly below the editor.
+    lv_obj_set_size(keyboard, layout.width(440), layout.height(250));
+    lv_obj_align(keyboard, LV_ALIGN_TOP_MID, 0, layout.y(140));
     lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(keyboard, keyboardEvent, LV_EVENT_ALL, this);
     lvgl_port_unlock();
@@ -259,9 +339,35 @@ void ConnectionUI::show(const ConnectionSettings &settings, bool requireConfigur
     lv_textarea_set_text(serverField, settings.serverAddress.c_str());
     lv_textarea_set_text(portField, String(settings.serverPort).c_str());
     this->requireConfiguration = requireConfiguration;
+    lv_obj_add_flag(connectedDetails, LV_OBJ_FLAG_HIDDEN);
     visible = true;
     lv_scr_load(screen);
     showNetworkPicker();
+    lvgl_port_unlock();
+}
+
+void ConnectionUI::showConnectedDetails(const ConnectionSettings &settings)
+{
+    lvgl_port_lock(-1);
+    if (!visible)
+        returnScreen = lv_scr_act();
+    lv_label_set_text(connectedNetworkValue, settings.wifiSsid.c_str());
+    const String server = settings.serverAddress + ":" + String(settings.serverPort);
+    lv_label_set_text(connectedServerValue, server.c_str());
+    requireConfiguration = false;
+    wifiCredentialsMode = false;
+    wifiConnectRequested = false;
+    serverPickerVisible = false;
+    manualServerMode = false;
+    lv_obj_add_flag(form, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(networkPicker, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(serverPicker, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(editorLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(editorField, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(connectedDetails, LV_OBJ_FLAG_HIDDEN);
+    visible = true;
+    lv_scr_load(screen);
     lvgl_port_unlock();
 }
 
@@ -273,6 +379,7 @@ void ConnectionUI::hide()
     visible = false;
     wifiConnectRequested = false;
     serverPickerVisible = false;
+    lv_obj_add_flag(connectedDetails, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ConnectionUI::setStatus(const char *text, bool error)
@@ -288,39 +395,67 @@ void ConnectionUI::fieldEvent(lv_event_t *event)
 {
     auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
     ui->activeField = lv_event_get_target(event);
+    const char *editorTitle = "ENTER CONNECTION DETAIL";
+    if (ui->activeField == ui->ssidField)
+        editorTitle = "ENTER NETWORK NAME";
+    else if (ui->activeField == ui->passwordField)
+        editorTitle = "ENTER PASSWORD";
+    else if (ui->activeField == ui->serverField)
+        editorTitle = "ENTER DCC-EX IP ADDRESS";
+    else if (ui->activeField == ui->portField)
+        editorTitle = "ENTER DCC-EX PORT";
+    lv_label_set_text(ui->editorLabel, editorTitle);
     lv_textarea_set_text(ui->editorField, lv_textarea_get_text(ui->activeField));
     lv_textarea_set_password_mode(ui->editorField, ui->activeField == ui->passwordField);
     if (ui->activeField == ui->portField)
     {
         lv_textarea_set_accepted_chars(ui->editorField, "0123456789");
         lv_textarea_set_max_length(ui->editorField, 5);
+        lv_keyboard_set_map(ui->keyboard, LV_KEYBOARD_MODE_USER_1,
+            numericKeyboardMap, numericKeyboardControlMap);
+        lv_keyboard_set_mode(ui->keyboard, LV_KEYBOARD_MODE_USER_1);
+    }
+    else if (ui->activeField == ui->serverField)
+    {
+        lv_textarea_set_accepted_chars(ui->editorField, "0123456789.");
+        lv_textarea_set_max_length(ui->editorField, 15);
+        lv_keyboard_set_map(ui->keyboard, LV_KEYBOARD_MODE_USER_2,
+            ipAddressKeyboardMap, ipAddressKeyboardControlMap);
+        lv_keyboard_set_mode(ui->keyboard, LV_KEYBOARD_MODE_USER_2);
     }
     else
     {
         lv_textarea_set_accepted_chars(ui->editorField, nullptr);
         lv_textarea_set_max_length(ui->editorField, 0);
+        lv_keyboard_set_mode(ui->keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
     }
+    ui->keyboardSelectedButton = 0;
+    lv_btnmatrix_set_selected_btn(ui->keyboard, ui->keyboardSelectedButton);
     lv_obj_add_flag(ui->form, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui->editorLabel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui->editorField, LV_OBJ_FLAG_HIDDEN);
     lv_keyboard_set_textarea(ui->keyboard, ui->editorField);
+    // The keyboard is navigated by the physical encoder, so give its selected
+    // key the normal LVGL focus styling even though it has no input group.
+    lv_obj_add_state(ui->keyboard, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
     lv_obj_clear_flag(ui->keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ConnectionUI::keyboardEvent(lv_event_t *event)
 {
     const lv_event_code_t code = lv_event_get_code(event);
+    auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
+    if (code == LV_EVENT_VALUE_CHANGED)
+        ui->keyboardSelectedButton = lv_keyboard_get_selected_btn(ui->keyboard);
     if (code == LV_EVENT_READY || code == LV_EVENT_CANCEL)
-    {
-        auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
         ui->finishEditing(code == LV_EVENT_READY);
-    }
 }
 
 void ConnectionUI::finishEditing(bool saveValue)
 {
     if (saveValue && activeField)
         lv_textarea_set_text(activeField, lv_textarea_get_text(editorField));
+    lv_obj_clear_state(keyboard, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
     lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(editorLabel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(editorField, LV_OBJ_FLAG_HIDDEN);
@@ -370,6 +505,12 @@ bool ConnectionUI::move(int delta)
     if (!visible || delta == 0)
         return false;
 
+    if (isEditingKeyboard())
+    {
+        moveKeyboardSelection(delta);
+        return true;
+    }
+
     if (serverPickerVisible)
     {
         if (commandStations.empty())
@@ -401,6 +542,11 @@ bool ConnectionUI::selectCurrent()
 {
     if (!visible)
         return false;
+    if (isEditingKeyboard())
+    {
+        enterKeyboardSelection();
+        return true;
+    }
     if (serverPickerVisible && !commandStations.empty())
     {
         selectCommandStation();
@@ -414,12 +560,111 @@ bool ConnectionUI::selectCurrent()
     return false;
 }
 
+uint16_t ConnectionUI::keyboardButtonCount() const
+{
+    const char **map = lv_keyboard_get_map_array(keyboard);
+    uint16_t count = 0;
+    while (map && *map && (*map)[0])
+    {
+        if (strcmp(*map, "\n") != 0)
+            ++count;
+        ++map;
+    }
+    return count;
+}
+
+void ConnectionUI::moveKeyboardSelection(int delta)
+{
+    const uint16_t count = keyboardButtonCount();
+    if (count == 0)
+        return;
+    int selected = static_cast<int>(keyboardSelectedButton) + delta;
+    if (selected < 0)
+        selected = 0;
+    if (selected >= static_cast<int>(count))
+        selected = count - 1;
+    keyboardSelectedButton = static_cast<uint16_t>(selected);
+    lv_btnmatrix_set_selected_btn(keyboard, keyboardSelectedButton);
+}
+
+void ConnectionUI::enterKeyboardSelection()
+{
+    const uint16_t count = keyboardButtonCount();
+    if (keyboardSelectedButton >= count)
+        keyboardSelectedButton = 0;
+    lv_btnmatrix_set_selected_btn(keyboard, keyboardSelectedButton);
+    const char *key = lv_keyboard_get_btn_text(keyboard, keyboardSelectedButton);
+    if (!key)
+        return;
+
+    // Handle physical-button entry directly. Sending a synthetic LVGL touch
+    // event can be skipped while the display task is processing a frame.
+    if (strcmp(key, LV_SYMBOL_BACKSPACE) == 0)
+    {
+        deleteKeyboardCharacter();
+    }
+    else if (strcmp(key, LV_SYMBOL_OK) == 0 || strcmp(key, LV_SYMBOL_NEW_LINE) == 0)
+    {
+        finishEditing(true);
+    }
+    else if (strcmp(key, LV_SYMBOL_KEYBOARD) == 0 || strcmp(key, LV_SYMBOL_CLOSE) == 0)
+    {
+        finishEditing(false);
+    }
+    else if (strcmp(key, LV_SYMBOL_LEFT) == 0)
+    {
+        lv_textarea_cursor_left(editorField);
+    }
+    else if (strcmp(key, LV_SYMBOL_RIGHT) == 0)
+    {
+        lv_textarea_cursor_right(editorField);
+    }
+    else if (strcmp(key, "abc") == 0)
+    {
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
+        keyboardSelectedButton = 0;
+        lv_btnmatrix_set_selected_btn(keyboard, keyboardSelectedButton);
+    }
+    else if (strcmp(key, "ABC") == 0)
+    {
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_TEXT_UPPER);
+        keyboardSelectedButton = 0;
+        lv_btnmatrix_set_selected_btn(keyboard, keyboardSelectedButton);
+    }
+    else if (strcmp(key, "1#") == 0)
+    {
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_SPECIAL);
+        keyboardSelectedButton = 0;
+        lv_btnmatrix_set_selected_btn(keyboard, keyboardSelectedButton);
+    }
+    else
+    {
+        lv_textarea_set_cursor_pos(editorField, LV_TEXTAREA_CURSOR_LAST);
+        lv_textarea_add_text(editorField, key);
+    }
+}
+
+void ConnectionUI::deleteKeyboardCharacter()
+{
+    if (!isEditingKeyboard())
+        return;
+    lv_textarea_set_cursor_pos(editorField, LV_TEXTAREA_CURSOR_LAST);
+    lv_textarea_del_char(editorField);
+}
+
+void ConnectionUI::clearKeyboardText()
+{
+    if (isEditingKeyboard())
+        lv_textarea_set_text(editorField, "");
+}
+
 void ConnectionUI::showNetworkPicker()
 {
     wifiCredentialsMode = false;
     wifiConnectRequested = false;
     serverPickerVisible = false;
     manualServerMode = false;
+    lv_obj_add_flag(connectedDetails, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(form, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(serverPicker, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
@@ -713,10 +958,13 @@ void ConnectionUI::updateCommandStationSelection()
 
 void ConnectionUI::selectNetwork()
 {
-    const uint16_t selected = lv_roller_get_selected(networkRoller);
-    if (selected >= networkNames.size())
+    // Read the roller directly so a physical-button press always uses the
+    // entry currently highlighted on screen.
+    char selectedNetwork[33] = {};
+    lv_roller_get_selected_str(networkRoller, selectedNetwork, sizeof(selectedNetwork));
+    if (selectedNetwork[0] == '\0')
         return;
-    lv_textarea_set_text(ssidField, networkNames[selected].c_str());
+    lv_textarea_set_text(ssidField, selectedNetwork);
     showWifiCredentialsForm();
 }
 
@@ -786,4 +1034,18 @@ void ConnectionUI::serverBackEvent(lv_event_t *event)
 void ConnectionUI::serverRollerEvent(lv_event_t *event)
 {
     static_cast<ConnectionUI *>(lv_event_get_user_data(event))->updateCommandStationSelection();
+}
+
+void ConnectionUI::detailsBackEvent(lv_event_t *event)
+{
+    auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
+    if (ui->backCallback)
+        ui->backCallback();
+}
+
+void ConnectionUI::disconnectEvent(lv_event_t *event)
+{
+    auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
+    if (ui->disconnectCallback)
+        ui->disconnectCallback();
 }

@@ -22,10 +22,12 @@ are examples.
 
 ## Features
 
-- Touchscreen Wi-Fi network selection and password entry
+- Touchscreen Wi-Fi network selection and password entry, with direct list-item selection
+- Field-specific on-screen keyboards: text, IPv4 address, and numeric port entry
 - Automatic DCC-EX Command Station discovery through mDNS, with manual
   address and port entry when discovery finds no suitable station
 - Saved Wi-Fi network, Command Station IP address, and port
+- Connected-state details page that shows the Wi-Fi network and Command Station without exposing the password, plus a disconnect action
 - Connection status displayed on the throttle screen
 - Home-screen DCC controls dimmed and disabled until the Command Station is
   ready
@@ -47,9 +49,9 @@ are examples.
 - Per-locomotive function state retained while the throttle remains powered
 - Synchronization of the selected locomotive's speed, direction, and function
   broadcasts from other throttles
-- Turnout list, close/throw actions, turnout state broadcasts, and local
-  favourite turnouts
-- Route list and route start actions
+- Turnout list with encoder or physical-button toggle actions, close/throw controls,
+  turnout state broadcasts, and local favourite turnouts
+- Route list with direct list-item start actions and Start control
 - Track-power page with on/off state and confirmation before power-off
 - Display-brightness and sleep-timeout settings saved as preferences
 - Configurable single-, double-, and long-press physical-button shortcuts
@@ -101,23 +103,30 @@ TCP port `2560`.
 
 1. Power the throttle. The connection screen opens when no saved connection is
    available.
-2. Select the Wi-Fi network used by the DCC-EX Command Station and enter its
-   password. The throttle connects as a normal Wi-Fi client.
-3. Select a discovered Command Station. If none is listed, select **Manual
-   connection** and enter its local IP address and TCP port, normally `2560`.
+2. Select the Wi-Fi network used by the DCC-EX Command Station. Tap a highlighted
+   network or use the physical button, then enter its password. The throttle connects
+   as a normal Wi-Fi client.
+3. Select a discovered Command Station by tapping its highlighted list entry or using
+   the physical button. If none is listed, select **Manual connection** and enter its
+   local IP address and TCP port, normally `2560`.
    The chosen connection details are stored for the next startup.
 4. Wait for the connection indicator on the throttle screen to show that
    DCC-EX is connected. Until then, DCC controls are shown in dark gray and
    cannot be activated. If lists do not appear, open the connection screen and
    use **Refresh**. **DIAG** shows the individual Wi-Fi, TCP, roster, turnout,
    and route loading states.
-5. Open the cog icon, select **Button Shortcuts**, and choose an action for
+5. When connected, open the Wi-Fi status tile to view the Wi-Fi network and
+   Command Station address and port. The page never displays the saved Wi-Fi
+   password; use **Disconnect** to end the current Wi-Fi and DCC-EX session.
+6. Open the cog icon, select **Button Shortcuts**, and choose an action for
    single press, double press, and long press. Each can use F0, F1, F2, Stop,
-   Change direction, or Emergency stop. The selections are saved immediately.
+   Change direction, Emergency stop, or Disabled. The selections are saved
+   immediately.
 
-In locomotive, turnout, and route lists, a single physical-button press
-selects the current entry and returns to the throttle. A double press returns
-without making a selection.
+In locomotive and route lists, a single physical-button press selects the
+current entry and returns to the throttle. On the turnout list, it toggles the
+selected turnout while the list remains open. A double press returns without
+making a selection.
 
 ## Controls
 
@@ -132,19 +141,21 @@ without making a selection.
 | Direction control | Stop and change direction |
 | Stop | Stop the selected locomotive |
 | `!` | Send a global DCC-EX emergency stop |
-| TURNOUT | Open turnout control |
+| TURNOUT | Open turnout control; tap an entry or use the physical button to toggle it |
 | POWER | Open track-power control |
-| ROUTES | Open route control |
-| Wi-Fi status tile | Open connection settings; shows setup, Wi-Fi, connecting, or online state |
+| ROUTES | Open route control; tap a highlighted route or use Start to run it |
+| Wi-Fi status tile | When connected, show network and Command Station details plus Disconnect; otherwise open connection setup |
 | DIAG | Open live Wi-Fi, TCP, roster, turnout, and route diagnostics |
 | Cog icon | Open display settings |
 
 The encoder uses the ESP32-S3 PCNT hardware peripheral and can browse
 locomotive, turnout, route, Wi-Fi-network, and Command-Station lists without
 waiting for DCC/TCP processing. A single physical-button press uses the current
-entry: it selects a locomotive, closes a turnout, starts a route, or advances
-from a Wi-Fi or Command-Station picker. A double press returns without an
-action. In the manual address editor, turning first moves focus among digits
+entry: it selects a locomotive, toggles a turnout, starts a route, or advances
+from a Wi-Fi or Command-Station picker. In connection text entry, turn to select
+keys, press once to enter the selected key, double press to delete the last
+character, and long press to clear the field. A double press returns without an
+action in list pages. In the manual address editor, turning first moves focus among digits
 and lower actions; press to edit the focused digit, turn to change it, and
 press again to return to focus navigation. On the home screen, the single-,
 double-, and long-press actions are configured under **Settings → Button

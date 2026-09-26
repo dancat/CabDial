@@ -66,7 +66,8 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
                     callbacks.releaseLocomotive);
     connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists,
                      callbacks.diagnostics, callbacks.connectWifi,
-                     callbacks.discoverCommandStations, callbacks.connectServer);
+                     callbacks.discoverCommandStations, callbacks.connectServer,
+                     callbacks.disconnect);
     turnouts.begin(callbacks.turnoutSet, callbacks.turnoutFavorite, callbacks.closeTurnouts,
                   callbacks.refreshTurnouts);
     routes.begin(callbacks.routeStart, callbacks.closeRoutes);
@@ -311,10 +312,23 @@ void connectServer(const String &address, uint16_t port)
     connectionUI.hide();
 }
 
+void disconnectDcc()
+{
+    dcc.disconnect();
+    rosterAvailable = false;
+    rosterLoaded = false;
+    turnoutsAvailable = false;
+    routesAvailable = false;
+    connectionUI.hide();
+}
+
 void openConnectionSettings()
 {
     noteDisplayActivity();
-    connectionUI.show(connectionSettings, !connectionConfigured);
+    if (dcc.connected())
+        connectionUI.showConnectedDetails(connectionSettings);
+    else
+        connectionUI.show(connectionSettings, !connectionConfigured);
 }
 void openDiagnostics() { diagnosticsUI.show(); }
 void closeDiagnostics() { diagnosticsUI.hide(); }
@@ -658,7 +672,10 @@ void applyEncoderTurn(int direction)
 {
     noteDisplayActivity();
     if (connectionUI.isVisible())
+    {
+        connectionUI.move(direction);
         return;
+    }
     if (selectionUI.isVisible())
     {
         selectionUI.move(direction);
@@ -725,6 +742,8 @@ void processPendingEncoderTurns()
 
 static void runHomeShortcut(HomeShortcutAction action)
 {
+    if (action == HomeShortcutAction::Disabled)
+        return;
     if (action == HomeShortcutAction::EmergencyStop) { emergencyStop(); return; }
     if (locomotive.address == 0)
         return;
@@ -764,8 +783,7 @@ static void SingleClickCb(
     }
     if (turnoutUI.isVisible())
     {
-        turnoutUI.closeSelected();
-        closeTurnoutPage();
+        turnoutUI.toggleSelected();
         lvgl_port_unlock();
         return;
     }
@@ -799,7 +817,9 @@ static void DoubleClickCb(void *button_handle, void *usr_data)
 {
     lvgl_port_lock(-1);
     noteDisplayActivity();
-    if (selectionUI.isVisible())
+    if (connectionUI.isEditingKeyboard())
+        connectionUI.deleteKeyboardCharacter();
+    else if (selectionUI.isVisible())
         closeLocomotiveSelection();
     else if (turnoutUI.isVisible())
         closeTurnoutPage();
@@ -822,6 +842,12 @@ static void LongPressStartCb(
 {
     lvgl_port_lock(-1);
     noteDisplayActivity();
+    if (connectionUI.isEditingKeyboard())
+    {
+        connectionUI.clearKeyboardText();
+        lvgl_port_unlock();
+        return;
+    }
     if (connectionUI.isVisible())
     {
         closeConnectionSettings();
@@ -950,6 +976,7 @@ void initializeApplication()
         connectWifi,
         discoverCommandStations,
         connectServer,
+        disconnectDcc,
         setTurnoutState,
         toggleTurnoutFavorite,
         closeTurnoutPage,

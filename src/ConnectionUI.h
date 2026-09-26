@@ -16,17 +16,21 @@ public:
     using WifiConnectCallback = void (*)(const String &ssid, const String &password);
     using DiscoverCallback = bool (*)(std::vector<CommandStationInfo> &stations);
     using ServerConnectCallback = void (*)(const String &address, uint16_t port);
+    using DisconnectCallback = void (*)();
     void begin(SaveCallback save, BackCallback back, RefreshCallback refresh,
         DiagnosticsCallback diagnostics = nullptr, WifiConnectCallback wifiConnect = nullptr,
-        DiscoverCallback discover = nullptr, ServerConnectCallback serverConnect = nullptr);
+        DiscoverCallback discover = nullptr, ServerConnectCallback serverConnect = nullptr,
+        DisconnectCallback disconnect = nullptr);
     void setDisplayProfile(const DisplayProfile &value) { profile = value; }
     void show(const ConnectionSettings &settings, bool requireConfiguration);
+    void showConnectedDetails(const ConnectionSettings &settings);
     void hide();
     bool isVisible() const { return visible; }
     bool isWifiCredentialsMode() const { return wifiCredentialsMode; }
     bool isAwaitingWifiConnection() const { return wifiConnectRequested; }
     bool isServerPickerVisible() const { return serverPickerVisible; }
     bool isManualServerMode() const { return manualServerMode; }
+    bool isEditingKeyboard() const { return keyboard && !lv_obj_has_flag(keyboard, LV_OBJ_FLAG_HIDDEN); }
     void update();
     void showCommandStationPicker(const std::vector<CommandStationInfo> &stations,
         bool discoveryAvailable);
@@ -34,6 +38,8 @@ public:
     // Called while the LVGL mutex is held by the physical-input path.
     bool move(int delta);
     bool selectCurrent();
+    void deleteKeyboardCharacter();
+    void clearKeyboardText();
 
 private:
     DisplayProfile profile {480, 480, true, 0, 0};
@@ -43,6 +49,9 @@ private:
     lv_obj_t *formTitle = nullptr;
     lv_obj_t *networkPicker = nullptr;
     lv_obj_t *serverPicker = nullptr;
+    lv_obj_t *connectedDetails = nullptr;
+    lv_obj_t *connectedNetworkValue = nullptr;
+    lv_obj_t *connectedServerValue = nullptr;
     lv_obj_t *keyboard = nullptr;
     lv_obj_t *editorLabel = nullptr;
     lv_obj_t *editorField = nullptr;
@@ -82,6 +91,7 @@ private:
     bool serverPickerVisible = false;
     bool manualServerMode = false;
     bool networkScanInProgress = false;
+    uint16_t keyboardSelectedButton = 0;
     std::vector<String> networkNames;
     std::vector<CommandStationInfo> commandStations;
     SaveCallback saveCallback = nullptr;
@@ -91,6 +101,7 @@ private:
     WifiConnectCallback wifiConnectCallback = nullptr;
     DiscoverCallback discoverCallback = nullptr;
     ServerConnectCallback serverConnectCallback = nullptr;
+    DisconnectCallback disconnectCallback = nullptr;
 
     static void fieldEvent(lv_event_t *event);
     static void keyboardEvent(lv_event_t *event);
@@ -109,6 +120,8 @@ private:
     static void serverManualEvent(lv_event_t *event);
     static void serverBackEvent(lv_event_t *event);
     static void serverRollerEvent(lv_event_t *event);
+    static void detailsBackEvent(lv_event_t *event);
+    static void disconnectEvent(lv_event_t *event);
     void finishEditing(bool saveValue);
     void save();
     void showNetworkPicker();
@@ -124,4 +137,7 @@ private:
     void selectCommandStation();
     void updateNetworkSelection();
     void updateCommandStationSelection();
+    void moveKeyboardSelection(int delta);
+    void enterKeyboardSelection();
+    uint16_t keyboardButtonCount() const;
 };

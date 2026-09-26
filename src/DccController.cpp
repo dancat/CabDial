@@ -50,6 +50,17 @@ bool DccController::connectWifi(const String &ssid, const String &password)
     return true;
 }
 
+void DccController::disconnect()
+{
+    configured = false;
+    serverConfigured = false;
+    resetServerSession();
+    WiFi.disconnect(false, false);
+    WiFi.mode(WIFI_OFF);
+    status = ConnectionStatus::NotConfigured;
+    Serial.println("Disconnected from WiFi and EX-CommandStation");
+}
+
 bool DccController::connectServer(const String &address, uint16_t port)
 {
     if (port == 0 || !serverAddress.fromString(address))

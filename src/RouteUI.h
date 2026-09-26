@@ -15,5 +15,5 @@ private:
     DisplayProfile profile {480, 480, true, 0, 0};
     lv_obj_t *screen=nullptr, *returnScreen=nullptr, *roller=nullptr, *status=nullptr;
     bool visible=false; std::vector<int> ids; StartCallback startCallback=nullptr; BackCallback backCallback=nullptr;
-    static void startEvent(lv_event_t *event); static void backEvent(lv_event_t *event);
+    static void startEvent(lv_event_t *event); static void backEvent(lv_event_t *event); static void rollerEvent(lv_event_t *event);
 };

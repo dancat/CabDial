@@ -71,10 +71,14 @@ private:
     lv_obj_t *settingsButton = nullptr;
     lv_obj_t *turnoutButton = nullptr;
     lv_obj_t *turnoutLabel = nullptr;
+    lv_obj_t *turnoutIcon = nullptr;
     lv_obj_t *powerButton = nullptr;
     lv_obj_t *powerLabel = nullptr;
+    lv_obj_t *powerRing = nullptr;
+    lv_obj_t *powerStem = nullptr;
     lv_obj_t *routeButton = nullptr;
     lv_obj_t *routeLabel = nullptr;
+    lv_obj_t *routeIconParts[5] = {};
 
     // Direction
     lv_obj_t *directionArrowLabel = nullptr;

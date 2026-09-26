@@ -20,6 +20,7 @@ public:
     void move(int delta);
     void closeSelected();
     void throwSelected();
+    void toggleSelected();
     void toggleFavoriteSelected();
     void hide();
     bool isVisible() const { return visible; }
@@ -34,6 +35,7 @@ private:
     bool visible = false;
     std::vector<int> ids;
     std::vector<String> optionLabels;
+    std::vector<bool> thrownStates;
     SetCallback setCallback = nullptr;
     FavoriteCallback favoriteCallback = nullptr;
     BackCallback backCallback = nullptr;

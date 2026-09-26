@@ -5,7 +5,7 @@
 
 enum class HomeShortcutAction : uint8_t
 {
-    F0, F1, F2, Stop, Direction, EmergencyStop
+    F0, F1, F2, Stop, Direction, EmergencyStop, Disabled
 };
 
 struct OperatingPreferences

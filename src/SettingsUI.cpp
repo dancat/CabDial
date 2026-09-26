@@ -97,7 +97,7 @@ void SettingsUI::begin(BrightnessCallback brightness, SleepCallback sleep, BackC
         lv_obj_set_style_text_color(label, lv_color_hex(0xCCD7E0), 0);
         lv_obj_align(label, LV_ALIGN_TOP_LEFT, layout.x(62), layout.y(94 + index * 82));
         shortcutSelectors[index] = lv_dropdown_create(shortcutScreen);
-        lv_dropdown_set_options(shortcutSelectors[index], "F0\nF1\nF2\nStop\nChange direction\nEmergency stop");
+        lv_dropdown_set_options(shortcutSelectors[index], "F0\nF1\nF2\nStop\nChange direction\nEmergency stop\nDisabled");
         lv_obj_set_width(shortcutSelectors[index], layout.width(300));
         lv_obj_set_style_bg_color(shortcutSelectors[index], lv_color_hex(0x266A91), LV_PART_MAIN);
         lv_obj_set_style_text_color(shortcutSelectors[index], lv_color_hex(0xFFFFFF), LV_PART_MAIN);

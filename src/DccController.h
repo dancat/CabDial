@@ -32,6 +32,7 @@ public:
     bool connect(const ConnectionSettings &settings);
     bool connectWifi(const String &ssid, const String &password);
     bool connectServer(const String &address, uint16_t port);
+    void disconnect();
     bool discoverCommandStations(std::vector<CommandStationInfo> &stations);
 
     void update();
