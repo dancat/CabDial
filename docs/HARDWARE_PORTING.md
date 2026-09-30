@@ -15,10 +15,11 @@ corresponding capability.
 
 `setBacklight()` must be harmless when the board has no adjustable backlight.
 
-The ViewE implementation decodes its rotary encoder through the ESP32-S3 PCNT
-peripheral. A new device can use PCNT where its MCU supports it, or provide a
-different decoder behind the same `InputCallbacks` interface. Encoder callbacks
-must remain short; application code may consume or queue the resulting turns.
+The ViewE implementation uses the board vendor's ESP32 Knob decoder to debounce
+both rotary-encoder phases and emit one callback per detent. A new device can
+use the same approach or provide another decoder behind the same `InputCallbacks`
+interface. Encoder callbacks must remain short; application code queues the
+resulting turns for consumption by the LVGL task.
 
 ## Display profile
 

@@ -21,13 +21,15 @@ uint16_t selectionForSleepSeconds(uint16_t seconds)
 }
 }
 
-void SettingsUI::begin(BrightnessCallback brightness, SleepCallback sleep, BackCallback back, ShortcutCallback shortcut)
+void SettingsUI::begin(BrightnessCallback brightness, SleepCallback sleep, BackCallback back,
+                       ShortcutCallback shortcut, DiagnosticsCallback diagnostics)
 {
     lvgl_port_lock(-1);
     brightnessCallback = brightness;
     sleepCallback = sleep;
     backCallback = back;
     shortcutCallback = shortcut;
+    diagnosticsCallback = diagnostics;
     const UiLayout layout(profile);
     screen = lv_obj_create(nullptr);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
@@ -68,11 +70,19 @@ void SettingsUI::begin(BrightnessCallback brightness, SleepCallback sleep, BackC
 
     lv_obj_t *shortcutsButton = lv_btn_create(screen);
     lv_obj_set_size(shortcutsButton, layout.width(220), layout.height(42));
-    lv_obj_align(shortcutsButton, LV_ALIGN_TOP_MID, 0, layout.y(342));
+    lv_obj_align(shortcutsButton, LV_ALIGN_TOP_MID, -layout.x(112), layout.y(342));
     lv_obj_t *shortcutsLabel = lv_label_create(shortcutsButton);
     lv_label_set_text(shortcutsLabel, "BUTTON SHORTCUTS");
     lv_obj_center(shortcutsLabel);
     lv_obj_add_event_cb(shortcutsButton, openShortcutsEvent, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *diagnosticsButton = lv_btn_create(screen);
+    lv_obj_set_size(diagnosticsButton, layout.width(180), layout.height(42));
+    lv_obj_align(diagnosticsButton, LV_ALIGN_TOP_MID, layout.x(112), layout.y(342));
+    lv_obj_t *diagnosticsLabel = lv_label_create(diagnosticsButton);
+    lv_label_set_text(diagnosticsLabel, "DIAGNOSTICS");
+    lv_obj_center(diagnosticsLabel);
+    lv_obj_add_event_cb(diagnosticsButton, diagnosticsEvent, LV_EVENT_CLICKED, this);
 
     lv_obj_t *backButton = lv_btn_create(screen);
     lv_obj_set_size(backButton, layout.width(130), layout.height(44));
@@ -171,6 +181,13 @@ void SettingsUI::openShortcutsEvent(lv_event_t *event)
 {
     auto *ui = static_cast<SettingsUI *>(lv_event_get_user_data(event));
     lv_scr_load(ui->shortcutScreen);
+}
+
+void SettingsUI::diagnosticsEvent(lv_event_t *event)
+{
+    auto *ui = static_cast<SettingsUI *>(lv_event_get_user_data(event));
+    if (ui->diagnosticsCallback)
+        ui->diagnosticsCallback();
 }
 
 void SettingsUI::shortcutEvent(lv_event_t *event)

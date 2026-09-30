@@ -64,15 +64,15 @@ void AppController::initializeUi(const UiCallbacks &callbacks)
     throttle.setFunctionPageCallback(callbacks.functionPage);
     selection.begin(callbacks.rosterSelected, callbacks.closeSelection, callbacks.refreshRoster,
                     callbacks.releaseLocomotive);
-    connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.refreshLists,
-                     callbacks.diagnostics, callbacks.connectWifi,
-                     callbacks.discoverCommandStations, callbacks.connectServer,
-                     callbacks.disconnect);
+    connection.begin(callbacks.saveConnection, callbacks.closeConnection, callbacks.testConnection,
+                     callbacks.connectWifi, callbacks.discoverCommandStations,
+                     callbacks.connectServer, callbacks.disconnect);
     turnouts.begin(callbacks.turnoutSet, callbacks.turnoutFavorite, callbacks.closeTurnouts,
                   callbacks.refreshTurnouts);
     routes.begin(callbacks.routeStart, callbacks.closeRoutes);
     power.begin(callbacks.setPower, callbacks.closePower);
-    settings.begin(callbacks.brightness, callbacks.sleep, callbacks.closeSettings, callbacks.shortcut);
+    settings.begin(callbacks.brightness, callbacks.sleep, callbacks.closeSettings,
+                   callbacks.shortcut, callbacks.diagnostics);
 }
 
 // Application runtime: DCC state, callbacks, and synchronization.
@@ -118,15 +118,18 @@ String displayedConnectionStatus;
 bool displayedConnectionReady = false;
 String displayedConnectionUiStatus;
 bool connectionUiWasVisible = false;
+bool connectionTestActive = false;
+unsigned long connectionTestStartedAt = 0;
+static constexpr unsigned long CONNECTION_TEST_TIMEOUT_MS = 30000;
 
-// The hardware encoder callback runs outside the application loop. Keep it
-// short and consume queued turns from the normal application loop.
+// The hardware encoder callback runs outside LVGL. Preserve accepted detents
+// in order and let an LVGL timer be the only code that applies them to UI.
 portMUX_TYPE encoderTurnMux = portMUX_INITIALIZER_UNLOCKED;
-int32_t pendingEncoderTurns = 0;
-static constexpr int32_t MAX_PENDING_ENCODER_TURNS = 128;
-// Apply one turn per loop so LVGL can repaint between turns instead of
-// displaying a delayed multi-step jump after a queued batch.
-static constexpr uint8_t MAX_ENCODER_TURNS_PER_UPDATE = 1;
+static constexpr uint8_t ENCODER_QUEUE_CAPACITY = 32;
+int8_t encoderTurnQueue[ENCODER_QUEUE_CAPACITY] = {};
+uint8_t encoderTurnHead = 0;
+uint8_t encoderTurnTail = 0;
+uintptr_t lastEncoderInputContext = 0;
 
 
 // -------------------------------------------------
@@ -266,6 +269,19 @@ void saveConnectionSettings(const ConnectionSettings &settings)
     rosterAvailable = false;
     rosterLoaded = false;
     connectionUI.hide();
+}
+
+void testConnectionSettings(const ConnectionSettings &settings)
+{
+    if (!dcc.connect(settings))
+    {
+        connectionTestActive = false;
+        connectionUI.setTestResult(false, "Invalid DCC-EX address or connection settings");
+        return;
+    }
+    connectionTestActive = true;
+    connectionTestStartedAt = millis();
+    connectionUI.setTestPending();
 }
 
 void connectWifi(const String &ssid, const String &password)
@@ -607,39 +623,16 @@ void openLocomotiveSelection()
 // Rotary encoder input
 // -------------------------------------------------
 
-bool applyListEncoderTurnImmediately(int direction)
+void enqueueEncoderTurn(int8_t direction)
 {
-    // The PCNT timer runs independently of TCP processing. Take the LVGL
-    // mutex only when it is available, so list navigation is immediate and
-    // the timer never waits behind a display update.
-    if (!lvgl_port_lock(0))
-        return false;
-
-    bool applied = false;
-    if (connectionUI.isVisible())
+    portENTER_CRITICAL(&encoderTurnMux);
+    const uint8_t nextHead = static_cast<uint8_t>((encoderTurnHead + 1) % ENCODER_QUEUE_CAPACITY);
+    if (nextHead != encoderTurnTail)
     {
-        applied = connectionUI.move(direction);
+        encoderTurnQueue[encoderTurnHead] = direction;
+        encoderTurnHead = nextHead;
     }
-    else if (selectionUI.isVisible())
-    {
-        selectionUI.move(direction);
-        applied = true;
-    }
-    else if (turnoutUI.isVisible())
-    {
-        turnoutUI.move(direction);
-        applied = true;
-    }
-    else if (routeUI.isVisible())
-    {
-        routeUI.move(direction);
-        applied = true;
-    }
-
-    if (applied)
-        noteDisplayActivity();
-    lvgl_port_unlock();
-    return applied;
+    portEXIT_CRITICAL(&encoderTurnMux);
 }
 
 void onKnobLeftEventCallback(
@@ -647,12 +640,7 @@ void onKnobLeftEventCallback(
     void *usr_data
 )
 {
-    if (applyListEncoderTurnImmediately(-1))
-        return;
-    portENTER_CRITICAL(&encoderTurnMux);
-    if (pendingEncoderTurns > -MAX_PENDING_ENCODER_TURNS)
-        --pendingEncoderTurns;
-    portEXIT_CRITICAL(&encoderTurnMux);
+    enqueueEncoderTurn(-1);
 }
 
 void onKnobRightEventCallback(
@@ -660,12 +648,7 @@ void onKnobRightEventCallback(
     void *usr_data
 )
 {
-    if (applyListEncoderTurnImmediately(1))
-        return;
-    portENTER_CRITICAL(&encoderTurnMux);
-    if (pendingEncoderTurns < MAX_PENDING_ENCODER_TURNS)
-        ++pendingEncoderTurns;
-    portEXIT_CRITICAL(&encoderTurnMux);
+    enqueueEncoderTurn(1);
 }
 
 void applyEncoderTurn(int direction)
@@ -715,24 +698,59 @@ void applyEncoderTurn(int direction)
     throttleUI.update(locomotive, mode == MODE_SPEED);
 }
 
-void processPendingEncoderTurns()
+uintptr_t currentEncoderInputContext()
 {
-    int32_t turns;
-    portENTER_CRITICAL(&encoderTurnMux);
-    turns = pendingEncoderTurns;
-    if (turns > MAX_ENCODER_TURNS_PER_UPDATE)
-        pendingEncoderTurns -= MAX_ENCODER_TURNS_PER_UPDATE;
-    else if (turns < -MAX_ENCODER_TURNS_PER_UPDATE)
-        pendingEncoderTurns += MAX_ENCODER_TURNS_PER_UPDATE;
-    else
-        pendingEncoderTurns = 0;
-    portEXIT_CRITICAL(&encoderTurnMux);
+    // The active screen catches ordinary page changes. Add sub-page state for
+    // screens that reuse one LVGL screen for several encoder destinations.
+    uintptr_t context = reinterpret_cast<uintptr_t>(lv_scr_act());
+    uint8_t subContext = static_cast<uint8_t>(mode);
+    if (connectionUI.isVisible())
+    {
+        subContext = connectionUI.isEditingKeyboard() ? 1 :
+            connectionUI.isServerPickerVisible() ? 2 :
+            connectionUI.isWifiCredentialsMode() ? 3 :
+            connectionUI.isManualServerMode() ? 4 : 5;
+    }
+    else if (selectionUI.isVisible())
+    {
+        subContext = static_cast<uint8_t>(8 + selectionUI.encoderContext());
+    }
+    return context ^ static_cast<uintptr_t>(subContext);
+}
 
-    const int magnitude = static_cast<int>(turns < 0 ? -turns : turns);
-    const int count = min(magnitude, static_cast<int>(MAX_ENCODER_TURNS_PER_UPDATE));
-    const int direction = turns < 0 ? -1 : 1;
-    for (int index = 0; index < count; ++index)
+void clearEncoderTurnQueue()
+{
+    portENTER_CRITICAL(&encoderTurnMux);
+    encoderTurnTail = encoderTurnHead;
+    portEXIT_CRITICAL(&encoderTurnMux);
+}
+
+void processPendingEncoderTurns(lv_timer_t *)
+{
+    const uintptr_t context = currentEncoderInputContext();
+    if (context != lastEncoderInputContext)
+    {
+        clearEncoderTurnQueue();
+        lastEncoderInputContext = context;
+        return;
+    }
+
+    // Bound each LVGL timer invocation so a fast turn cannot monopolize the
+    // display task, while still draining more quickly than the prior loop path.
+    for (uint8_t index = 0; index < 4; ++index)
+    {
+        int8_t direction = 0;
+        portENTER_CRITICAL(&encoderTurnMux);
+        if (encoderTurnTail != encoderTurnHead)
+        {
+            direction = encoderTurnQueue[encoderTurnTail];
+            encoderTurnTail = static_cast<uint8_t>((encoderTurnTail + 1) % ENCODER_QUEUE_CAPACITY);
+        }
+        portEXIT_CRITICAL(&encoderTurnMux);
+        if (direction == 0)
+            break;
         applyEncoderTurn(direction);
+    }
 }
 
 
@@ -971,8 +989,7 @@ void initializeApplication()
         releaseSelectedLocomotive,
         saveConnectionSettings,
         closeConnectionSettings,
-        refreshCommandStationLists,
-        openDiagnostics,
+        testConnectionSettings,
         connectWifi,
         discoverCommandStations,
         connectServer,
@@ -988,7 +1005,8 @@ void initializeApplication()
         setDisplayBrightness,
         setDisplaySleepTimeout,
         setHomeShortcut,
-        closeDisplaySettings
+        closeDisplaySettings,
+        openDiagnostics
     };
     app.initializeUi(uiCallbacks);
     diagnosticsUI.setDisplayProfile(device.displayProfile());
@@ -996,6 +1014,10 @@ void initializeApplication()
     functionUI.setDisplayProfile(device.displayProfile());
     functionUI.begin(onUIFunction, closeFunctionPage);
     throttleUI.setMoreFunctionsCallback(openFunctionPage);
+    lvgl_port_lock(-1);
+    lastEncoderInputContext = currentEncoderInputContext();
+    lv_timer_create(processPendingEncoderTurns, 5, nullptr);
+    lvgl_port_unlock();
     dcc.setLocoUpdateCallback(onLocoBroadcast);
     dcc.setTurnoutUpdateCallback(onTurnoutBroadcast);
     dcc.setTrackPowerCallback(onTrackPowerBroadcast);
@@ -1026,13 +1048,6 @@ void initializeApplication()
 
 void updateApplication()
 {
-    // Process physical encoder turns before network work. DCC reads can wait
-    // for TCP traffic; doing this first prevents list navigation from being
-    // delayed and then replayed as a burst.
-    lvgl_port_lock(-1);
-    processPendingEncoderTurns();
-    lvgl_port_unlock();
-
     // Protocol processing can wait on network activity. Do not hold the LVGL
     // mutex while it runs, otherwise touch polling is stalled as well.
     dcc.update();
@@ -1071,6 +1086,19 @@ void updateApplication()
             connectionUI.setStatus(connectionStatus,
                 dcc.connectionStatus() == DccController::ConnectionStatus::NotConfigured);
             displayedConnectionUiStatus = connectionStatus;
+        }
+    }
+    if (connectionTestActive)
+    {
+        if (dcc.serverResponded())
+        {
+            connectionTestActive = false;
+            connectionUI.setTestResult(true, "Connection test successful");
+        }
+        else if (millis() - connectionTestStartedAt >= CONNECTION_TEST_TIMEOUT_MS)
+        {
+            connectionTestActive = false;
+            connectionUI.setTestResult(false, "Connection test failed or timed out");
         }
     }
     connectionUiWasVisible = connectionUI.isVisible();

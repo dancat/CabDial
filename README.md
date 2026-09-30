@@ -112,9 +112,10 @@ TCP port `2560`.
    The chosen connection details are stored for the next startup.
 4. Wait for the connection indicator on the throttle screen to show that
    DCC-EX is connected. Until then, DCC controls are shown in dark gray and
-   cannot be activated. If lists do not appear, open the connection screen and
-   use **Refresh**. **DIAG** shows the individual Wi-Fi, TCP, roster, turnout,
-   and route loading states.
+   cannot be activated. Before saving manually entered connection details, use
+   **Test** to verify the Wi-Fi and DCC-EX connection. If lists do not appear,
+   open **Settings → Diagnostics** to view the individual Wi-Fi, TCP, roster,
+   turnout, and route loading states.
 5. When connected, open the Wi-Fi status tile to view the Wi-Fi network and
    Command Station address and port. The page never displays the saved Wi-Fi
    password; use **Disconnect** to end the current Wi-Fi and DCC-EX session.
@@ -145,12 +146,12 @@ making a selection.
 | POWER | Open track-power control |
 | ROUTES | Open route control; tap a highlighted route or use Start to run it |
 | Wi-Fi status tile | When connected, show network and Command Station details plus Disconnect; otherwise open connection setup |
-| DIAG | Open live Wi-Fi, TCP, roster, turnout, and route diagnostics |
-| Cog icon | Open display settings |
+| Settings → Diagnostics | Open live Wi-Fi, TCP, roster, turnout, and route diagnostics |
+| Cog icon | Open display, shortcut, and diagnostics settings |
 
-The encoder uses the ESP32-S3 PCNT hardware peripheral and can browse
-locomotive, turnout, route, Wi-Fi-network, and Command-Station lists without
-waiting for DCC/TCP processing. A single physical-button press uses the current
+The encoder uses detent-aware quadrature decoding and can browse locomotive,
+turnout, route, Wi-Fi-network, and Command-Station lists without waiting for
+DCC/TCP processing. A single physical-button press uses the current
 entry: it selects a locomotive, toggles a turnout, starts a route, or advances
 from a Wi-Fi or Command-Station picker. In connection text entry, turn to select
 keys, press once to enter the selected key, double press to delete the last
@@ -193,9 +194,8 @@ Shortcuts**.
 ## Dependencies
 
 The PlatformIO configuration installs LVGL 8.4, DCCEXProtocol, ESP32 Display
-Panel, ESP32 Button, and their required ESP32 support libraries. Rotary
-encoder decoding uses ESP-IDF's built-in PCNT peripheral rather than an
-external encoder library.
+Panel, ESP32 Button, ESP32 Knob, and their required ESP32 support libraries.
+Rotary encoder decoding remains encapsulated at the device boundary.
 See `platformio.ini` for exact sources.
 
 ## License

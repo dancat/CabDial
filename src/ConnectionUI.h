@@ -11,14 +11,13 @@ class ConnectionUI
 public:
     using SaveCallback = void (*)(const ConnectionSettings &settings);
     using BackCallback = void (*)();
-    using RefreshCallback = void (*)();
-    using DiagnosticsCallback = void (*)();
+    using TestCallback = void (*)(const ConnectionSettings &settings);
     using WifiConnectCallback = void (*)(const String &ssid, const String &password);
     using DiscoverCallback = bool (*)(std::vector<CommandStationInfo> &stations);
     using ServerConnectCallback = void (*)(const String &address, uint16_t port);
     using DisconnectCallback = void (*)();
-    void begin(SaveCallback save, BackCallback back, RefreshCallback refresh,
-        DiagnosticsCallback diagnostics = nullptr, WifiConnectCallback wifiConnect = nullptr,
+    void begin(SaveCallback save, BackCallback back, TestCallback test,
+        WifiConnectCallback wifiConnect = nullptr,
         DiscoverCallback discover = nullptr, ServerConnectCallback serverConnect = nullptr,
         DisconnectCallback disconnect = nullptr);
     void setDisplayProfile(const DisplayProfile &value) { profile = value; }
@@ -35,6 +34,8 @@ public:
     void showCommandStationPicker(const std::vector<CommandStationInfo> &stations,
         bool discoveryAvailable);
     void setStatus(const char *text, bool error = false);
+    void setTestPending();
+    void setTestResult(bool success, const char *message);
     // Called while the LVGL mutex is held by the physical-input path.
     bool move(int delta);
     bool selectCurrent();
@@ -66,8 +67,7 @@ private:
     lv_obj_t *portLabel = nullptr;
     lv_obj_t *statusLabel = nullptr;
     lv_obj_t *backButton = nullptr;
-    lv_obj_t *refreshButton = nullptr;
-    lv_obj_t *diagnosticsButton = nullptr;
+    lv_obj_t *testButton = nullptr;
     lv_obj_t *saveButton = nullptr;
     lv_obj_t *networkStatusLabel = nullptr;
     lv_obj_t *networkRoller = nullptr;
@@ -92,12 +92,12 @@ private:
     bool manualServerMode = false;
     bool networkScanInProgress = false;
     uint16_t keyboardSelectedButton = 0;
+    uint8_t formFocusIndex = 0;
     std::vector<String> networkNames;
     std::vector<CommandStationInfo> commandStations;
     SaveCallback saveCallback = nullptr;
     BackCallback backCallback = nullptr;
-    RefreshCallback refreshCallback = nullptr;
-    DiagnosticsCallback diagnosticsCallback = nullptr;
+    TestCallback testCallback = nullptr;
     WifiConnectCallback wifiConnectCallback = nullptr;
     DiscoverCallback discoverCallback = nullptr;
     ServerConnectCallback serverConnectCallback = nullptr;
@@ -107,8 +107,7 @@ private:
     static void keyboardEvent(lv_event_t *event);
     static void saveEvent(lv_event_t *event);
     static void backEvent(lv_event_t *event);
-    static void refreshEvent(lv_event_t *event);
-    static void diagnosticsEvent(lv_event_t *event);
+    static void testEvent(lv_event_t *event);
     static void networkSelectEvent(lv_event_t *event);
     static void networkScanEvent(lv_event_t *event);
     static void manualSetupEvent(lv_event_t *event);
@@ -122,6 +121,7 @@ private:
     static void serverRollerEvent(lv_event_t *event);
     static void detailsBackEvent(lv_event_t *event);
     static void disconnectEvent(lv_event_t *event);
+    void beginEditingField(lv_obj_t *field);
     void finishEditing(bool saveValue);
     void save();
     void showNetworkPicker();
@@ -140,4 +140,7 @@ private:
     void moveKeyboardSelection(int delta);
     void enterKeyboardSelection();
     uint16_t keyboardButtonCount() const;
+    uint8_t formFocusables(lv_obj_t **objects, uint8_t capacity) const;
+    void resetFormFocus();
+    void updateFormFocus();
 };

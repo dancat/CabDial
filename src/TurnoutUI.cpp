@@ -61,7 +61,7 @@ void TurnoutUI::begin(SetCallback set, FavoriteCallback favorite, BackCallback b
     lv_obj_set_style_radius(roller, 14, LV_PART_SELECTED);
     lv_obj_set_style_text_opa(roller, LV_OPA_TRANSP, LV_PART_SELECTED);
     lv_roller_set_visible_row_count(roller, 5);
-    lv_obj_align(roller, LV_ALIGN_TOP_MID, 0, layout.y(100));
+    lv_obj_align(roller, LV_ALIGN_TOP_MID, 0, layout.y(82));
     lv_obj_add_event_cb(roller, rollerEvent, LV_EVENT_VALUE_CHANGED, this);
 
     selectedLabel = lv_label_create(screen);
@@ -70,13 +70,13 @@ void TurnoutUI::begin(SetCallback set, FavoriteCallback favorite, BackCallback b
     lv_obj_set_style_text_align(selectedLabel, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(selectedLabel, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(selectedLabel, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(selectedLabel, LV_ALIGN_TOP_MID, 0, layout.y(176));
+    lv_obj_align(selectedLabel, LV_ALIGN_TOP_MID, 0, layout.y(158));
 
-    makeButton(screen, layout, "Refresh", 156, 42, 0, 398, refreshEvent, this);
-    makeButton(screen, layout, "Favorite", 94, 54, -144, 322, favoriteEvent, this);
-    makeButton(screen, layout, "Close", 94, 54, -48, 322, closeEvent, this);
-    makeButton(screen, layout, "Throw", 94, 54, 48, 322, throwEvent, this);
-    makeButton(screen, layout, "Back", 94, 54, 144, 322, backEvent, this);
+    makeButton(screen, layout, "Favorite", 104, 56, -112, 302, favoriteEvent, this);
+    makeButton(screen, layout, "Close", 104, 56, 0, 302, closeEvent, this);
+    makeButton(screen, layout, "Throw", 104, 56, 112, 302, throwEvent, this);
+    makeButton(screen, layout, "Back", 104, 56, -60, 374, backEvent, this);
+    makeButton(screen, layout, "Refresh", 104, 56, 60, 374, refreshEvent, this);
     lvgl_port_unlock();
 }
 

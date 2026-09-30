@@ -61,7 +61,7 @@ void LocomotiveSelectionUI::begin(SelectCallback select, BackCallback back,
     lv_obj_set_style_radius(roller, 14, LV_PART_SELECTED);
     lv_obj_set_style_text_opa(roller, LV_OPA_TRANSP, LV_PART_SELECTED);
     lv_roller_set_visible_row_count(roller, 5);
-    lv_obj_align(roller, LV_ALIGN_CENTER, 0, layout.y(-5));
+    lv_obj_align(roller, LV_ALIGN_CENTER, 0, layout.y(-40));
     lv_obj_add_event_cb(roller, rollerEvent, LV_EVENT_VALUE_CHANGED, this);
 
     selectedLabel = lv_label_create(screen);
@@ -70,12 +70,12 @@ void LocomotiveSelectionUI::begin(SelectCallback select, BackCallback back,
     lv_obj_set_style_text_align(selectedLabel, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(selectedLabel, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(selectedLabel, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(selectedLabel, LV_ALIGN_CENTER, 0, layout.y(-5));
+    lv_obj_align(selectedLabel, LV_ALIGN_CENTER, 0, layout.y(-40));
 
-    listSelectButton = makeButton(screen, layout, "Select", 94, 42, -110, 348, selectEvent, this);
-    listReleaseButton = makeButton(screen, layout, "Release", 94, 42, 0, 348, manualReleaseEvent, this);
-    listBackButton = makeButton(screen, layout, "Back", 94, 42, 110, 348, backEvent, this);
-    refreshButton = makeButton(screen, layout, "Refresh", 112, 34, 0, 405, refreshEvent, this);
+    listSelectButton = makeButton(screen, layout, "Select", 148, 56, -78, 310, selectEvent, this);
+    listReleaseButton = makeButton(screen, layout, "Release", 148, 56, 78, 310, manualReleaseEvent, this);
+    listBackButton = makeButton(screen, layout, "Back", 148, 56, -78, 378, backEvent, this);
+    refreshButton = makeButton(screen, layout, "Refresh", 148, 56, 78, 378, refreshEvent, this);
 
     manualTitle = lv_label_create(screen);
     lv_label_set_text(manualTitle, "MANUAL ADDRESS");
@@ -168,20 +168,10 @@ void LocomotiveSelectionUI::move(int delta)
             changeManualDigit(activeManualDigit, delta);
         else
         {
-            // Mechanical encoder bounce can briefly report the opposite
-            // direction. Suppress that reversal so a continued turn at an
-            // end stop cannot make focus jump between lower action buttons.
-            const unsigned long now = millis();
-            if (lastManualFocusDirection != 0 && delta != lastManualFocusDirection &&
-                now - lastManualFocusMoveAt < 35)
-                return;
-
             const int next = static_cast<int>(manualFocus) + delta;
             manualFocus = static_cast<uint8_t>(next < 0 ? 0 :
                 next > MANUAL_DIGIT_COUNT + MANUAL_ACTION_COUNT - 1 ?
                 MANUAL_DIGIT_COUNT + MANUAL_ACTION_COUNT - 1 : next);
-            lastManualFocusDirection = delta < 0 ? -1 : 1;
-            lastManualFocusMoveAt = now;
             updateManualFocus();
         }
         return;
@@ -283,8 +273,6 @@ void LocomotiveSelectionUI::showManual(uint16_t address)
     activeManualDigit = MANUAL_DIGIT_COUNT - 1;
     manualFocus = 0;
     editingManualDigit = false;
-    lastManualFocusDirection = 0;
-    lastManualFocusMoveAt = 0;
     lv_obj_add_flag(roller, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(selectedLabel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(status, LV_OBJ_FLAG_HIDDEN);

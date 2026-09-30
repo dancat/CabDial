@@ -59,9 +59,12 @@ lv_obj_t *makeButton(lv_obj_t *parent, const UiLayout &layout, const char *text,
     lv_event_cb_t callback, void *user)
 {
     lv_obj_t *button = lv_btn_create(parent);
-    lv_obj_set_size(button, layout.width(78), layout.height(38));
+    lv_obj_set_size(button, layout.width(140), layout.height(48));
     lv_obj_align(button, LV_ALIGN_TOP_MID, layout.x(x), layout.y(y));
     lv_obj_set_style_bg_color(button, lv_color_hex(0x263746), 0);
+    lv_obj_set_style_border_color(button, lv_color_hex(0x3C566B), 0);
+    lv_obj_set_style_border_width(button, 1, 0);
+    lv_obj_set_style_radius(button, 14, 0);
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, text);
     lv_obj_center(label);
@@ -87,16 +90,15 @@ lv_obj_t *makeWideButton(lv_obj_t *parent, const UiLayout &layout, const char *t
 }
 }
 
-void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback refresh,
-    DiagnosticsCallback diagnostics, WifiConnectCallback wifiConnect,
+void ConnectionUI::begin(SaveCallback save, BackCallback back, TestCallback test,
+    WifiConnectCallback wifiConnect,
     DiscoverCallback discover, ServerConnectCallback serverConnect,
     DisconnectCallback disconnect)
 {
     lvgl_port_lock(-1);
     saveCallback = save;
     backCallback = back;
-    refreshCallback = refresh;
-    diagnosticsCallback = diagnostics;
+    testCallback = test;
     wifiConnectCallback = wifiConnect;
     discoverCallback = discover;
     serverConnectCallback = serverConnect;
@@ -149,7 +151,7 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_set_style_radius(networkRoller, 14, LV_PART_SELECTED);
     lv_obj_set_style_text_opa(networkRoller, LV_OPA_TRANSP, LV_PART_SELECTED);
     lv_roller_set_visible_row_count(networkRoller, 5);
-    lv_obj_align(networkRoller, LV_ALIGN_CENTER, 0, layout.y(-5));
+    lv_obj_align(networkRoller, LV_ALIGN_CENTER, 0, layout.y(-40));
     lv_obj_add_event_cb(networkRoller, networkRollerEvent, LV_EVENT_VALUE_CHANGED, this);
     lv_obj_add_event_cb(networkRoller, networkSelectEvent, LV_EVENT_SHORT_CLICKED, this);
 
@@ -159,15 +161,17 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_set_style_text_align(networkSelectedLabel, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(networkSelectedLabel, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(networkSelectedLabel, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(networkSelectedLabel, LV_ALIGN_CENTER, 0, layout.y(-5));
+    lv_obj_align(networkSelectedLabel, LV_ALIGN_CENTER, 0, layout.y(-40));
 
-    networkBackButton = makeWideButton(networkPicker, layout, "Back", 118, 42, -70, 348,
+    // Fill the round screen's lower area with a balanced 2x2 action grid.
+    // The lower row stays slightly narrower than the available circular chord.
+    networkBackButton = makeWideButton(networkPicker, layout, "Back", 148, 56, -78, 310,
         networkBackEvent, this);
-    networkSelectButton = makeWideButton(networkPicker, layout, "Select", 118, 42, 70, 348,
+    networkSelectButton = makeWideButton(networkPicker, layout, "Select", 148, 56, 78, 310,
         networkSelectEvent, this);
-    networkScanButton = makeWideButton(networkPicker, layout, "Scan again", 112, 34, -64, 405,
+    networkScanButton = makeWideButton(networkPicker, layout, "Scan again", 148, 56, -78, 378,
         networkScanEvent, this);
-    manualSetupButton = makeWideButton(networkPicker, layout, "Manual", 112, 34, 64, 405,
+    manualSetupButton = makeWideButton(networkPicker, layout, "Manual", 148, 56, 78, 378,
         manualSetupEvent, this);
 
     serverPicker = lv_obj_create(screen);
@@ -250,7 +254,7 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_set_style_radius(serverRoller, 14, LV_PART_SELECTED);
     lv_obj_set_style_text_opa(serverRoller, LV_OPA_TRANSP, LV_PART_SELECTED);
     lv_roller_set_visible_row_count(serverRoller, 5);
-    lv_obj_align(serverRoller, LV_ALIGN_CENTER, 0, layout.y(-5));
+    lv_obj_align(serverRoller, LV_ALIGN_CENTER, 0, layout.y(-40));
     lv_obj_add_event_cb(serverRoller, serverRollerEvent, LV_EVENT_VALUE_CHANGED, this);
     lv_obj_add_event_cb(serverRoller, serverSelectEvent, LV_EVENT_SHORT_CLICKED, this);
 
@@ -260,15 +264,15 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_set_style_text_align(serverSelectedLabel, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(serverSelectedLabel, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(serverSelectedLabel, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(serverSelectedLabel, LV_ALIGN_CENTER, 0, layout.y(-5));
+    lv_obj_align(serverSelectedLabel, LV_ALIGN_CENTER, 0, layout.y(-40));
 
-    serverBackButton = makeWideButton(serverPicker, layout, "Back", 118, 42, -70, 348,
+    serverBackButton = makeWideButton(serverPicker, layout, "Back", 148, 56, -78, 310,
         serverBackEvent, this);
-    serverSelectButton = makeWideButton(serverPicker, layout, "Select", 118, 42, 70, 348,
+    serverSelectButton = makeWideButton(serverPicker, layout, "Select", 148, 56, 78, 310,
         serverSelectEvent, this);
-    serverScanButton = makeWideButton(serverPicker, layout, "Scan again", 112, 34, -64, 405,
+    serverScanButton = makeWideButton(serverPicker, layout, "Scan again", 148, 56, -78, 378,
         serverScanEvent, this);
-    serverManualButton = makeWideButton(serverPicker, layout, "Manual", 112, 34, 64, 405,
+    serverManualButton = makeWideButton(serverPicker, layout, "Manual", 148, 56, 78, 378,
         serverManualEvent, this);
     lv_obj_add_flag(serverPicker, LV_OBJ_FLAG_HIDDEN);
 
@@ -296,13 +300,21 @@ void ConnectionUI::begin(SaveCallback save, BackCallback back, RefreshCallback r
     lv_obj_set_style_text_color(statusLabel, lv_color_hex(0x8899AA), 0);
     lv_obj_align(statusLabel, LV_ALIGN_TOP_MID, 0, layout.y(310));
 
-    backButton = makeButton(form, layout, "Back", -90, 350, backEvent, this);
-    refreshButton = makeButton(form, layout, "Refresh", 0, 350, refreshEvent, this);
-    diagnosticsButton = makeButton(form, layout, "DIAG", 90, 350, diagnosticsEvent, this);
-    saveButton = makeButton(form, layout, "Save", 0, 400, saveEvent, this);
-    wifiConnectButton = makeWideButton(form, layout, "Connect", 118, 42, 70, 348,
+    backButton = makeButton(form, layout, "Back", -74, 338, backEvent, this);
+    testButton = makeButton(form, layout, "Test", 74, 338, testEvent, this);
+    saveButton = makeButton(form, layout, "Save", 0, 398, saveEvent, this);
+    wifiConnectButton = makeWideButton(form, layout, "Connect", 140, 48, 74, 338,
         wifiConnectEvent, this);
     lv_obj_add_flag(wifiConnectButton, LV_OBJ_FLAG_HIDDEN);
+
+    for (lv_obj_t *object : {ssidField, passwordField, serverField, portField,
+                             backButton, testButton, saveButton,
+                             wifiConnectButton})
+    {
+        lv_obj_set_style_outline_color(object, lv_color_hex(0x6CCBFF), LV_STATE_FOCUS_KEY);
+        lv_obj_set_style_outline_width(object, 3, LV_STATE_FOCUS_KEY);
+        lv_obj_set_style_outline_pad(object, 3, LV_STATE_FOCUS_KEY);
+    }
 
     editorLabel = lv_label_create(screen);
     lv_label_set_text(editorLabel, "EDIT CONNECTION DETAIL");
@@ -391,54 +403,72 @@ void ConnectionUI::setStatus(const char *text, bool error)
     lv_obj_set_style_text_color(label, lv_color_hex(error ? 0xFF7043 : 0x8899AA), 0);
 }
 
+void ConnectionUI::setTestPending()
+{
+    lv_obj_set_style_bg_color(testButton, lv_color_hex(0x806000), LV_PART_MAIN);
+    setStatus("Testing Wi-Fi and DCC-EX connection...");
+}
+
+void ConnectionUI::setTestResult(bool success, const char *message)
+{
+    lv_obj_set_style_bg_color(testButton,
+        lv_color_hex(success ? 0x2E7D32 : 0xB3261E), LV_PART_MAIN);
+    setStatus(message, !success);
+}
+
 void ConnectionUI::fieldEvent(lv_event_t *event)
 {
     auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
-    ui->activeField = lv_event_get_target(event);
+    ui->beginEditingField(lv_event_get_target(event));
+}
+
+void ConnectionUI::beginEditingField(lv_obj_t *field)
+{
+    activeField = field;
     const char *editorTitle = "ENTER CONNECTION DETAIL";
-    if (ui->activeField == ui->ssidField)
+    if (activeField == ssidField)
         editorTitle = "ENTER NETWORK NAME";
-    else if (ui->activeField == ui->passwordField)
+    else if (activeField == passwordField)
         editorTitle = "ENTER PASSWORD";
-    else if (ui->activeField == ui->serverField)
+    else if (activeField == serverField)
         editorTitle = "ENTER DCC-EX IP ADDRESS";
-    else if (ui->activeField == ui->portField)
+    else if (activeField == portField)
         editorTitle = "ENTER DCC-EX PORT";
-    lv_label_set_text(ui->editorLabel, editorTitle);
-    lv_textarea_set_text(ui->editorField, lv_textarea_get_text(ui->activeField));
-    lv_textarea_set_password_mode(ui->editorField, ui->activeField == ui->passwordField);
-    if (ui->activeField == ui->portField)
+    lv_label_set_text(editorLabel, editorTitle);
+    lv_textarea_set_text(editorField, lv_textarea_get_text(activeField));
+    lv_textarea_set_password_mode(editorField, activeField == passwordField);
+    if (activeField == portField)
     {
-        lv_textarea_set_accepted_chars(ui->editorField, "0123456789");
-        lv_textarea_set_max_length(ui->editorField, 5);
-        lv_keyboard_set_map(ui->keyboard, LV_KEYBOARD_MODE_USER_1,
+        lv_textarea_set_accepted_chars(editorField, "0123456789");
+        lv_textarea_set_max_length(editorField, 5);
+        lv_keyboard_set_map(keyboard, LV_KEYBOARD_MODE_USER_1,
             numericKeyboardMap, numericKeyboardControlMap);
-        lv_keyboard_set_mode(ui->keyboard, LV_KEYBOARD_MODE_USER_1);
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_USER_1);
     }
-    else if (ui->activeField == ui->serverField)
+    else if (activeField == serverField)
     {
-        lv_textarea_set_accepted_chars(ui->editorField, "0123456789.");
-        lv_textarea_set_max_length(ui->editorField, 15);
-        lv_keyboard_set_map(ui->keyboard, LV_KEYBOARD_MODE_USER_2,
+        lv_textarea_set_accepted_chars(editorField, "0123456789.");
+        lv_textarea_set_max_length(editorField, 15);
+        lv_keyboard_set_map(keyboard, LV_KEYBOARD_MODE_USER_2,
             ipAddressKeyboardMap, ipAddressKeyboardControlMap);
-        lv_keyboard_set_mode(ui->keyboard, LV_KEYBOARD_MODE_USER_2);
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_USER_2);
     }
     else
     {
-        lv_textarea_set_accepted_chars(ui->editorField, nullptr);
-        lv_textarea_set_max_length(ui->editorField, 0);
-        lv_keyboard_set_mode(ui->keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
+        lv_textarea_set_accepted_chars(editorField, nullptr);
+        lv_textarea_set_max_length(editorField, 0);
+        lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
     }
-    ui->keyboardSelectedButton = 0;
-    lv_btnmatrix_set_selected_btn(ui->keyboard, ui->keyboardSelectedButton);
-    lv_obj_add_flag(ui->form, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui->editorLabel, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui->editorField, LV_OBJ_FLAG_HIDDEN);
-    lv_keyboard_set_textarea(ui->keyboard, ui->editorField);
+    keyboardSelectedButton = 0;
+    lv_btnmatrix_set_selected_btn(keyboard, keyboardSelectedButton);
+    lv_obj_add_flag(form, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(editorLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(editorField, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(keyboard, editorField);
     // The keyboard is navigated by the physical encoder, so give its selected
     // key the normal LVGL focus styling even though it has no input group.
-    lv_obj_add_state(ui->keyboard, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
-    lv_obj_clear_flag(ui->keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_state(keyboard, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
+    lv_obj_clear_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ConnectionUI::keyboardEvent(lv_event_t *event)
@@ -462,6 +492,7 @@ void ConnectionUI::finishEditing(bool saveValue)
     if (form)
         lv_obj_clear_flag(form, LV_OBJ_FLAG_HIDDEN);
     activeField = nullptr;
+    updateFormFocus();
 }
 
 void ConnectionUI::saveEvent(lv_event_t *event)
@@ -475,13 +506,23 @@ void ConnectionUI::backEvent(lv_event_t *event)
     ui->showNetworkPicker();
 }
 
-void ConnectionUI::refreshEvent(lv_event_t *event)
+void ConnectionUI::testEvent(lv_event_t *event)
 {
     auto *ui = static_cast<ConnectionUI *>(lv_event_get_user_data(event));
-    if (ui->refreshCallback)
-        ui->refreshCallback();
+    ConnectionSettings settings;
+    settings.wifiSsid = lv_textarea_get_text(ui->ssidField);
+    settings.wifiPassword = lv_textarea_get_text(ui->passwordField);
+    settings.serverAddress = lv_textarea_get_text(ui->serverField);
+    const long port = strtol(lv_textarea_get_text(ui->portField), nullptr, 10);
+    if (!settings.wifiSsid.length() || !settings.serverAddress.length() || port < 1 || port > 65535)
+    {
+        ui->setTestResult(false, "Enter valid Wi-Fi and DCC-EX settings");
+        return;
+    }
+    settings.serverPort = static_cast<uint16_t>(port);
+    if (ui->testCallback)
+        ui->testCallback(settings);
 }
-void ConnectionUI::diagnosticsEvent(lv_event_t *event) { auto *ui=static_cast<ConnectionUI*>(lv_event_get_user_data(event)); if(ui->diagnosticsCallback) ui->diagnosticsCallback(); }
 
 void ConnectionUI::save()
 {
@@ -508,6 +549,22 @@ bool ConnectionUI::move(int delta)
     if (isEditingKeyboard())
     {
         moveKeyboardSelection(delta);
+        return true;
+    }
+
+    if (form && !lv_obj_has_flag(form, LV_OBJ_FLAG_HIDDEN))
+    {
+        lv_obj_t *objects[9] = {};
+        const uint8_t count = formFocusables(objects, 9);
+        if (count == 0)
+            return false;
+        int next = static_cast<int>(formFocusIndex) + (delta < 0 ? -1 : 1);
+        if (next < 0)
+            next = count - 1;
+        else if (next >= count)
+            next = 0;
+        formFocusIndex = static_cast<uint8_t>(next);
+        updateFormFocus();
         return true;
     }
 
@@ -547,6 +604,22 @@ bool ConnectionUI::selectCurrent()
         enterKeyboardSelection();
         return true;
     }
+    if (form && !lv_obj_has_flag(form, LV_OBJ_FLAG_HIDDEN))
+    {
+        lv_obj_t *objects[9] = {};
+        const uint8_t count = formFocusables(objects, 9);
+        if (count == 0)
+            return false;
+        if (formFocusIndex >= count)
+            formFocusIndex = 0;
+        lv_obj_t *selected = objects[formFocusIndex];
+        if (selected == ssidField || selected == passwordField ||
+            selected == serverField || selected == portField)
+            beginEditingField(selected);
+        else
+            lv_event_send(selected, LV_EVENT_CLICKED, nullptr);
+        return true;
+    }
     if (serverPickerVisible && !commandStations.empty())
     {
         selectCommandStation();
@@ -558,6 +631,45 @@ bool ConnectionUI::selectCurrent()
         return true;
     }
     return false;
+}
+
+uint8_t ConnectionUI::formFocusables(lv_obj_t **objects, uint8_t capacity) const
+{
+    if (!objects || capacity == 0 || !form || lv_obj_has_flag(form, LV_OBJ_FLAG_HIDDEN))
+        return 0;
+
+    uint8_t count = 0;
+    for (lv_obj_t *object : {ssidField, passwordField, serverField, portField,
+                             backButton, testButton, saveButton,
+                             wifiConnectButton})
+    {
+        if (object && !lv_obj_has_flag(object, LV_OBJ_FLAG_HIDDEN) && count < capacity)
+            objects[count++] = object;
+    }
+    return count;
+}
+
+void ConnectionUI::updateFormFocus()
+{
+    for (lv_obj_t *object : {ssidField, passwordField, serverField, portField,
+                             backButton, testButton, saveButton,
+                             wifiConnectButton})
+        if (object)
+            lv_obj_clear_state(object, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
+
+    lv_obj_t *objects[9] = {};
+    const uint8_t count = formFocusables(objects, 9);
+    if (count == 0)
+        return;
+    if (formFocusIndex >= count)
+        formFocusIndex = 0;
+    lv_obj_add_state(objects[formFocusIndex], LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
+}
+
+void ConnectionUI::resetFormFocus()
+{
+    formFocusIndex = 0;
+    updateFormFocus();
 }
 
 uint16_t ConnectionUI::keyboardButtonCount() const
@@ -676,6 +788,7 @@ void ConnectionUI::showNetworkPicker()
     else
         lv_obj_clear_flag(networkBackButton, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(networkPicker, LV_OBJ_FLAG_HIDDEN);
+    updateFormFocus();
     scanNetworks();
 }
 
@@ -696,21 +809,22 @@ void ConnectionUI::showManualForm()
     lv_obj_align(serverField, LV_ALIGN_TOP_MID, 0, layout.y(202));
     lv_obj_align(portLabel, LV_ALIGN_TOP_MID, 0, layout.y(244));
     lv_obj_align(portField, LV_ALIGN_TOP_MID, 0, layout.y(262));
-    for (lv_obj_t *object : {serverLabel, serverField, portLabel, portField, refreshButton,
-                             diagnosticsButton, saveButton})
+    for (lv_obj_t *object : {serverLabel, serverField, portLabel, portField, testButton,
+                             saveButton})
         lv_obj_clear_flag(object, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(wifiConnectButton, LV_OBJ_FLAG_HIDDEN);
     if (requireConfiguration)
     {
         lv_obj_add_flag(backButton, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(refreshButton, LV_OBJ_FLAG_HIDDEN);
     }
     else
     {
         lv_obj_clear_flag(backButton, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(refreshButton, LV_OBJ_FLAG_HIDDEN);
     }
+    lv_obj_clear_flag(testButton, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_color(testButton, lv_color_hex(0x263746), LV_PART_MAIN);
     setStatus("Enter Wi-Fi and DCC-EX connection details");
+    resetFormFocus();
 }
 
 void ConnectionUI::showWifiCredentialsForm()
@@ -723,12 +837,13 @@ void ConnectionUI::showWifiCredentialsForm()
     lv_label_set_text(formTitle, "WI-FI DETAILS");
     for (lv_obj_t *object : {ssidLabel, ssidField, passwordLabel, passwordField})
         lv_obj_clear_flag(object, LV_OBJ_FLAG_HIDDEN);
-    for (lv_obj_t *object : {serverLabel, serverField, portLabel, portField, refreshButton,
-                             diagnosticsButton, saveButton})
+    for (lv_obj_t *object : {serverLabel, serverField, portLabel, portField, testButton,
+                             saveButton})
         lv_obj_add_flag(object, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(backButton, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(wifiConnectButton, LV_OBJ_FLAG_HIDDEN);
     setStatus("Enter the password, then connect to Wi-Fi");
+    resetFormFocus();
 }
 
 void ConnectionUI::connectWifi()
@@ -757,7 +872,7 @@ void ConnectionUI::showManualServerForm()
     lv_obj_clear_flag(form, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(formTitle, "MANUAL DCC-EX");
     for (lv_obj_t *object : {ssidLabel, ssidField, passwordLabel, passwordField,
-                             refreshButton, diagnosticsButton, saveButton})
+                             testButton, saveButton})
         lv_obj_add_flag(object, LV_OBJ_FLAG_HIDDEN);
     for (lv_obj_t *object : {serverLabel, serverField, portLabel, portField})
         lv_obj_clear_flag(object, LV_OBJ_FLAG_HIDDEN);
@@ -770,6 +885,7 @@ void ConnectionUI::showManualServerForm()
     lv_obj_clear_flag(wifiConnectButton, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(lv_obj_get_child(wifiConnectButton, 0), "Connect");
     setStatus("Enter the DCC-EX address and port");
+    resetFormFocus();
 }
 
 void ConnectionUI::connectManualServer()

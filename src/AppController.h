@@ -36,8 +36,7 @@ public:
         LocomotiveSelectionUI::ReleaseCallback releaseLocomotive = nullptr;
         ConnectionUI::SaveCallback saveConnection = nullptr;
         ConnectionUI::BackCallback closeConnection = nullptr;
-        ConnectionUI::RefreshCallback refreshLists = nullptr;
-        ConnectionUI::DiagnosticsCallback diagnostics = nullptr;
+        ConnectionUI::TestCallback testConnection = nullptr;
         ConnectionUI::WifiConnectCallback connectWifi = nullptr;
         ConnectionUI::DiscoverCallback discoverCommandStations = nullptr;
         ConnectionUI::ServerConnectCallback connectServer = nullptr;
@@ -54,6 +53,7 @@ public:
         SettingsUI::SleepCallback sleep = nullptr;
         SettingsUI::ShortcutCallback shortcut = nullptr;
         SettingsUI::BackCallback closeSettings = nullptr;
+        SettingsUI::DiagnosticsCallback diagnostics = nullptr;
     };
 
     AppController(Device &device, ThrottleUI &throttle, LocomotiveSelectionUI &selection,

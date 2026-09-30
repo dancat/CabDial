@@ -11,8 +11,10 @@ public:
     using SleepCallback = void (*)(uint16_t seconds);
     using BackCallback = void (*)();
     using ShortcutCallback = void (*)(uint8_t press, HomeShortcutAction action);
+    using DiagnosticsCallback = void (*)();
 
-    void begin(BrightnessCallback brightness, SleepCallback sleep, BackCallback back, ShortcutCallback shortcut);
+    void begin(BrightnessCallback brightness, SleepCallback sleep, BackCallback back,
+               ShortcutCallback shortcut, DiagnosticsCallback diagnostics);
     void setDisplayProfile(const DisplayProfile &value) { profile = value; }
     void show(uint8_t brightness, uint16_t sleepSeconds, HomeShortcutAction single, HomeShortcutAction dbl, HomeShortcutAction lng);
     void hide();
@@ -33,6 +35,7 @@ private:
     SleepCallback sleepCallback = nullptr;
     BackCallback backCallback = nullptr;
     ShortcutCallback shortcutCallback = nullptr;
+    DiagnosticsCallback diagnosticsCallback = nullptr;
 
     void updateBrightnessValue(uint8_t brightness);
     static void brightnessEvent(lv_event_t *event);
@@ -40,4 +43,5 @@ private:
     static void backEvent(lv_event_t *event);
     static void shortcutEvent(lv_event_t *event);
     static void openShortcutsEvent(lv_event_t *event);
+    static void diagnosticsEvent(lv_event_t *event);
 };

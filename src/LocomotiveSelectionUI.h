@@ -22,6 +22,7 @@ public:
     void select();
     void hide();
     bool isVisible() const { return visible; }
+    uint8_t encoderContext() const { return manualMode ? (editingManualDigit ? 2 : 1) : 0; }
 
 private:
     DisplayProfile profile {480, 480, true, 0, 0};
@@ -49,8 +50,6 @@ private:
     uint8_t activeManualDigit = MANUAL_DIGIT_COUNT - 1;
     uint8_t manualFocus = 0;
     bool editingManualDigit = false;
-    int8_t lastManualFocusDirection = 0;
-    unsigned long lastManualFocusMoveAt = 0;
     std::vector<uint16_t> addresses;
     std::vector<String> optionLabels;
     SelectCallback selectCallback = nullptr;
